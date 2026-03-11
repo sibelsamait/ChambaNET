@@ -66,3 +66,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Error interno del servidor.' }, { status: 500 });
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    // Buscamos todas las chambas con estado PUBLICADA
+    // Usamos select() para traer los datos de la chamba + los datos básicos del empleador vinculados por el ID
+    const { data, error } = await supabase
+      .from('chambas')
+      .select(`
+        *,
+        empleador:usuarios (
+          nombres,
+          apellido_paterno,
+          promedio_valoracion
+        )
+      `)
+      .eq('estado', 'PUBLICADA')
+      .order('creado_en', { ascending: false }); // Las más nuevas primero
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ 
+      mensaje: 'Chambas recuperadas con éxito',
+      total: data.length,
+      chambas: data 
+    }, { status: 200 });
+
+  } catch (error) {
+    return NextResponse.json({ error: 'Error interno del servidor al listar chambas.' }, { status: 500 });
+  }
+}
