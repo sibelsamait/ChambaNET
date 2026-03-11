@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { validarRut, calcularBloqueoEdad } from '../../../../../utils/validations';
-import { supabase } from '../../../../../lib/supabase'; // Asegúrate de que esta ruta coincida con donde creaste tu supabase.ts
+import { validarRut, calcularBloqueoEdad } from '../../../../utils/validations';
+import { supabase } from '../../../../lib/supabase'; // Asegúrate de que esta ruta coincida con donde creaste tu supabase.ts
 
 export async function POST(request: Request) {
   try {
