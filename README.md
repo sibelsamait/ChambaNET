@@ -1,5 +1,7 @@
 # ChambaNET-New
-## Idea de Diego Arias
-## Derechos de producción para Sibel Sama.
+Página web de empleos tipo Uber.
 
-Pagina para empleos tipo Uber.
+## Idea de Diego Arias
+Derechos de producción para Sibel Sama.
+
+
