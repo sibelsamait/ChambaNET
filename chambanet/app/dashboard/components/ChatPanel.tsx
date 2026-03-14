@@ -1,7 +1,9 @@
+import Avatar from './Avatar';
+
 export default function ChatPanel() {
   const chats = [
-    { id: 1, name: "Empleador", msg: "Hola como est...", active: true },
-    { id: 2, name: "Trabajador #1", msg: "Hola como est...", active: false },
+    { id: 1, name: 'Empleador', msg: 'Hola como est...', active: true, imageUrl: null },
+    { id: 2, name: 'Trabajador #1', msg: 'Hola como est...', active: false, imageUrl: null },
   ];
 
   return (
@@ -13,7 +15,13 @@ export default function ChatPanel() {
       <div className="flex-1 overflow-y-auto">
         {chats.map((chat) => (
           <div key={chat.id} className={`p-4 border-b border-gray-100 cursor-pointer transition flex items-center gap-3 ${chat.active ? 'bg-blue-50 border-l-4 border-l-blue-700' : 'hover:bg-gray-50 border-l-4 border-l-transparent'}`}>
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0"></div>
+            <Avatar
+              imageUrl={chat.imageUrl}
+              name={chat.name}
+              alt={`Foto de ${chat.name}`}
+              className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-gray-200"
+              fallbackClassName="text-xs"
+            />
             <div className="overflow-hidden">
               <p className={`text-sm font-bold ${chat.active ? 'text-gray-900' : 'text-gray-700'}`}>{chat.name}</p>
               <p className="text-xs text-gray-500 truncate">{chat.msg}</p>

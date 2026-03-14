@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from 'react';
+import Avatar from './Avatar';
+
 interface Chamba {
   id: string;
   titulo: string;
@@ -101,15 +103,13 @@ export default function Feed({ chambas }: { chambas: Chamba[] }) {
 
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    {chamba.empleador_imagen_url ? (
-                      <img
-                        src={chamba.empleador_imagen_url}
-                        alt="Foto del empleador"
-                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                    )}
+                    <Avatar
+                      imageUrl={chamba.empleador_imagen_url}
+                      name={`${chamba.empleador?.nombres || ''} ${chamba.empleador?.apellido_paterno || ''}`.trim()}
+                      alt="Foto del empleador"
+                      className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                      fallbackClassName="text-[10px]"
+                    />
                     <div>
                       <p className="text-xs font-bold text-gray-900">
                         {chamba.empleador?.nombres

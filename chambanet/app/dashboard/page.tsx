@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'; // Ajusta la ruta a tu cliente de supabase
+import { createSupabaseServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Sidebar from './components/Sidebar';
@@ -13,6 +13,7 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
+  const supabase = createSupabaseServerClient(accessToken);
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
 
   if (authError || !authData.user) {

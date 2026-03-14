@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabase';
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No autenticado. Inicia sesión.' }, { status: 401 });
     }
 
+    const supabase = createSupabaseServerClient(accessToken);
     const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
 
     if (authError || !authData.user) {
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.json({ message: 'Imagen de perfil actualizada.' }, { status: 200 });
   } catch (error: unknown) {
     const detalle = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error interno subiendo imagen:', detalle);
