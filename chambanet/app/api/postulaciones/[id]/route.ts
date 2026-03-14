@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase'; 
 
-export async function PATCH(request: Request, context: any) {
+type PatchContext = {
+  params: Promise<{ id: string }>;
+};
+
+export async function PATCH(request: Request, context: PatchContext) {
   try {
     // 1. EL FIX: En las versiones nuevas de Next.js, hay que "esperar" los parámetros de la URL
     const { id: postulacion_id } = await context.params; 
@@ -42,7 +46,8 @@ export async function PATCH(request: Request, context: any) {
 
     return NextResponse.json({ mensaje: '¡Trabajador aceptado con éxito! La chamba ahora está EN OBRA.' }, { status: 200 });
 
-  } catch (error: any) {
-    return NextResponse.json({ error: 'Error interno del servidor.', detalle: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const detalle = error instanceof Error ? error.message : 'Error desconocido';
+    return NextResponse.json({ error: 'Error interno del servidor.', detalle }, { status: 500 });
   }
 }

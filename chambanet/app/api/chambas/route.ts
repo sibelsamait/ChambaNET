@@ -62,12 +62,12 @@ export async function POST(request: Request) {
       chamba: data[0] 
     }, { status: 201 });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error interno del servidor.' }, { status: 500 });
   }
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // Buscamos todas las chambas con estado PUBLICADA
     // Usamos select() para traer los datos de la chamba + los datos básicos del empleador vinculados por el ID
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
       chambas: data 
     }, { status: 200 });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error interno del servidor al listar chambas.' }, { status: 500 });
   }
 }

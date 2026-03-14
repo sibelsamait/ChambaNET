@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       bloqueado: bloqueadoHasta ? `Cuenta bloqueada hasta ${bloqueadoHasta.toISOString().split('T')[0]} por ser menor de edad.` : false
     }, { status: 201 });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error interno del servidor al procesar el registro.' }, { status: 500 });
   }
 }

@@ -5,12 +5,12 @@ export default function Login() {
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
       {/* --- NAVBAR --- */}
       <header className="w-full bg-white shadow-sm py-4 px-8 flex justify-between items-center">
-        <div className="text-2xl font-bold text-[#FFACCA] font-mono">
+        <div className="text-2xl font-bold text-blue-700 font-mono">
           <Link href="/">ChambaNET</Link>
         </div>
         <nav className="flex gap-6 text-sm font-medium items-center">
-          <Link href="/" className="hover:text-[#FFACCA] transition">Inicio</Link>
-          <Link href="/#registro" className="hover:text-[#FFACCA] transition">Registrarse</Link>
+          <Link href="/" className="hover:text-blue-600 transition">Inicio</Link>
+          <Link href="/#registro" className="hover:text-blue-600 transition">Registrarse</Link>
           <span className="px-4 py-2 bg-gray-100 text-gray-400 rounded-md cursor-not-allowed">
             Iniciar sesión
           </span>
@@ -33,7 +33,7 @@ export default function Login() {
                 type="email" 
                 id="email"
                 placeholder="Ingresa tu correo" 
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFACCA] transition"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
                 required
               />
             </div>
@@ -46,21 +46,21 @@ export default function Login() {
                 type="password" 
                 id="password"
                 placeholder="••••••••" 
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFACCA] transition"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
                 required
               />
             </div>
 
             <button 
               type="submit" 
-              className="w-full bg-[#FFACCA] text-white font-bold py-3 rounded-md hover:bg-pink-400 transition mt-4 shadow-sm"
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700 transition mt-4 shadow-sm"
             >
               Ingresar
             </button>
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-500">
-            ¿No tienes una cuenta? <Link href="/#registro" className="text-[#FFACCA] font-medium hover:underline">Regístrate aquí</Link>
+            ¿No tienes una cuenta? <Link href="/#registro" className="text-blue-700 font-medium hover:underline">Regístrate aquí</Link>
           </div>
         </div>
       </main>

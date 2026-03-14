@@ -14,7 +14,7 @@ export const validarRut = (rut: string): boolean => {
 
   // 4. Separar los números del dígito verificador (DV)
   const partes = rutLimpio.split('-');
-  let digitos = partes[0];
+  const digitos = partes[0];
   const dvIngresado = partes[1];
 
   // 5. Algoritmo Módulo 11

@@ -43,9 +43,10 @@ export default function Feed({ chambas }: { chambas: Chamba[] }) {
       // NOTA: En un caso real, aquí actualizarías el estado local para quitar 
       // la chamba de la lista o cambiar el botón a "Postulado".
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido';
       console.error("Error en la postulación:", error);
-      alert(`No se pudo postular: ${error.message}`);
+      alert(`No se pudo postular: ${message}`);
     } finally {
       // Liberamos el botón
       setPostulandoId(null);

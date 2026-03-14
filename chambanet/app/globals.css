@@ -1,21 +1,63 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fcfeff;
+  --foreground: #1d1e1f;
+  --color-surface: #fcfeff;
+  --color-gray-50: #fcfeff;
+  --color-gray-100: #f3f8fb;
+  --color-gray-200: #dfe8ee;
+  --color-gray-300: #c5d0d8;
+  --color-gray-400: #95a3ae;
+  --color-gray-500: #6c7a84;
+  --color-gray-600: #4f5a63;
+  --color-gray-700: #394147;
+  --color-gray-800: #2a2f33;
+  --color-gray-900: #1d1e1f;
+  --color-blue-50: #eef8ff;
+  --color-blue-100: #d9efff;
+  --color-blue-200: #b9e1ff;
+  --color-blue-300: #87cbff;
+  --color-blue-400: #5ebafc;
+  --color-blue-500: #46b2fa;
+  --color-blue-600: #309dde;
+  --color-blue-700: #217db4;
+  --color-blue-800: #195f88;
+  --color-blue-900: #123f5c;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-white: var(--color-surface);
+  --color-gray-50: var(--color-gray-50);
+  --color-gray-100: var(--color-gray-100);
+  --color-gray-200: var(--color-gray-200);
+  --color-gray-300: var(--color-gray-300);
+  --color-gray-400: var(--color-gray-400);
+  --color-gray-500: var(--color-gray-500);
+  --color-gray-600: var(--color-gray-600);
+  --color-gray-700: var(--color-gray-700);
+  --color-gray-800: var(--color-gray-800);
+  --color-gray-900: var(--color-gray-900);
+  --color-blue-50: var(--color-blue-50);
+  --color-blue-100: var(--color-blue-100);
+  --color-blue-200: var(--color-blue-200);
+  --color-blue-300: var(--color-blue-300);
+  --color-blue-400: var(--color-blue-400);
+  --color-blue-500: var(--color-blue-500);
+  --color-blue-600: var(--color-blue-600);
+  --color-blue-700: var(--color-blue-700);
+  --color-blue-800: var(--color-blue-800);
+  --color-blue-900: var(--color-blue-900);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1d1e1f;
+    --foreground: #fcfeff;
   }
 }
 
