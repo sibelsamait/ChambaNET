@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import BrandLogo from './components/BrandLogo';
 
 export default function Inicio() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
       {/* --- NAVBAR --- */}
       <header className="w-full bg-white shadow-sm py-4 px-8 flex justify-between items-center">
-        <div className="text-2xl font-bold text-blue-700 font-mono">ChambaNET</div>
+        <BrandLogo href="/" size="md" />
         <nav className="hidden md:flex gap-6 text-sm font-medium">
           <a href="#objetivo" className="hover:text-blue-600 transition">Objetivo</a>
           <a href="#nosotros" className="hover:text-blue-600 transition">Nosotros</a>

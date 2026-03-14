@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import BrandLogo from '../components/BrandLogo';
 
 export default function Login() {
   const router = useRouter();
@@ -42,9 +43,7 @@ export default function Login() {
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
       {/* --- NAVBAR --- */}
       <header className="w-full bg-white shadow-sm py-4 px-8 flex justify-between items-center">
-        <div className="text-2xl font-bold text-blue-700 font-mono">
-          <Link href="/">ChambaNET</Link>
-        </div>
+        <BrandLogo href="/" size="md" />
         <nav className="flex gap-6 text-sm font-medium items-center">
           <Link href="/" className="hover:text-blue-600 transition">Inicio</Link>
           <Link href="/#registro" className="hover:text-blue-600 transition">Registrarse</Link>

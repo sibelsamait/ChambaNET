@@ -1,3 +1,5 @@
+import BrandLogo from '@/app/components/BrandLogo';
+
 interface SidebarProps {
   nombres?: string | null;
   apellidoPaterno?: string | null;
@@ -19,7 +21,7 @@ export default function Sidebar({ nombres, apellidoPaterno, estrellas, imagenUrl
   return (
     <aside className="w-64 border-r border-gray-200 flex flex-col bg-white flex-shrink-0">
       <div className="p-6 border-b border-gray-200 bg-gray-900">
-        <h1 className="text-2xl font-black text-white tracking-wide">ChambaNET</h1>
+        <BrandLogo href="/dashboard" inverted size="sm" textClassName="font-black tracking-wide" />
       </div>
       <ProfileSummary
         fullName={nombreCorto || 'Usuario'}
