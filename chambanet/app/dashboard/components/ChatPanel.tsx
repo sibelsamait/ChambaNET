@@ -7,12 +7,12 @@ export default function ChatPanel() {
   ];
 
   return (
-    <aside className="w-72 border-l border-gray-200 bg-white flex flex-col flex-shrink-0">
+    <aside className="w-full border-t border-gray-200 bg-white flex flex-col flex-shrink-0 lg:w-72 lg:border-t-0 lg:border-l">
       <div className="h-16 border-b border-gray-200 flex items-center justify-between px-4">
         <h2 className="font-bold text-gray-900">Chat</h2>
         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-sm font-bold tracking-wider">EN OBRA</span>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="max-h-72 overflow-y-auto lg:max-h-none lg:flex-1">
         {chats.map((chat) => (
           <div key={chat.id} className={`p-4 border-b border-gray-100 cursor-pointer transition flex items-center gap-3 ${chat.active ? 'bg-blue-50 border-l-4 border-l-blue-700' : 'hover:bg-gray-50 border-l-4 border-l-transparent'}`}>
             <Avatar

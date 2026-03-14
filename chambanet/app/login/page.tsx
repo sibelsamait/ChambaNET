@@ -42,11 +42,11 @@ export default function Login() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
       {/* --- NAVBAR --- */}
-      <header className="w-full bg-white shadow-sm py-4 px-8 flex justify-between items-center">
+      <header className="w-full bg-white shadow-sm py-4 px-4 sm:px-8 flex justify-between items-center gap-3">
         <BrandLogo href="/" size="md" />
-        <nav className="flex gap-6 text-sm font-medium items-center">
+        <nav className="flex gap-3 sm:gap-6 text-xs sm:text-sm font-medium items-center">
           <Link href="/" className="hover:text-blue-600 transition">Inicio</Link>
-          <Link href="/#registro" className="hover:text-blue-600 transition">Registrarse</Link>
+          <Link href="/#registro" className="hidden sm:inline hover:text-blue-600 transition">Registrarse</Link>
           <span className="px-4 py-2 bg-gray-100 text-gray-400 rounded-md cursor-not-allowed">
             Iniciar sesión
           </span>
@@ -54,8 +54,8 @@ export default function Login() {
       </header>
 
       {/* --- LOGIN SECTION --- */}
-      <main className="flex-grow flex items-center justify-center px-4">
-        <div className="bg-white p-8 sm:p-10 rounded-xl shadow-lg border border-gray-100 w-full max-w-md">
+      <main className="flex-grow flex items-center justify-center px-4 py-8">
+        <div className="bg-white p-6 sm:p-10 rounded-xl shadow-lg border border-gray-100 w-full max-w-md">
           <h1 className="text-3xl font-bold mb-8 font-mono text-center text-gray-900">
             Bienvenido
           </h1>

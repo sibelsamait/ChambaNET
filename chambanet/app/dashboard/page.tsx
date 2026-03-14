@@ -72,7 +72,7 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="flex h-screen bg-white text-gray-800 font-sans overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-white text-gray-800 font-sans lg:h-screen lg:flex-row lg:overflow-hidden">
       <Sidebar
         nombres={perfilUsuario?.nombres}
         apellidoPaterno={perfilUsuario?.apellido_paterno}

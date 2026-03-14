@@ -5,7 +5,7 @@ export default function Inicio() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
       {/* --- NAVBAR --- */}
-      <header className="w-full bg-white shadow-sm py-4 px-8 flex justify-between items-center">
+      <header className="w-full bg-white shadow-sm py-4 px-4 sm:px-8 flex justify-between items-center gap-4">
         <BrandLogo href="/" size="md" />
         <nav className="hidden md:flex gap-6 text-sm font-medium">
           <a href="#objetivo" className="hover:text-blue-600 transition">Objetivo</a>
@@ -14,6 +14,18 @@ export default function Inicio() {
             Iniciar Sesión
           </Link>
         </nav>
+        <details className="md:hidden relative group">
+          <summary className="list-none cursor-pointer select-none px-3 py-2 border border-gray-300 text-gray-700 text-sm font-semibold rounded-md hover:bg-gray-100 transition">
+            Menú
+          </summary>
+          <div className="absolute right-0 mt-2 w-52 rounded-lg border border-gray-200 bg-white shadow-lg p-2 z-20">
+            <a href="#objetivo" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Objetivo</a>
+            <a href="#nosotros" className="block px-3 py-2 rounded-md text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">Nosotros</a>
+            <Link href="/login" className="block mt-1 px-3 py-2 rounded-md text-sm font-semibold text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+              Iniciar Sesión
+            </Link>
+          </div>
+        </details>
       </header>
 
       {/* --- HERO & REGISTRO --- */}
@@ -30,20 +42,20 @@ export default function Inicio() {
           </div>
 
           {/* Formulario de Registro */}
-          <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+          <div className="bg-white p-5 sm:p-8 rounded-xl shadow-lg border border-gray-100">
             <h2 className="text-2xl font-bold mb-6 font-mono text-center">Crea una cuenta</h2>
             <form className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input type="text" placeholder="R.U.N" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <input type="text" placeholder="Nombres" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <input type="text" placeholder="Apellido Paterno" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <input type="text" placeholder="Apellido Materno" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <input type="text" placeholder="Calle" className="p-2 border rounded w-full col-span-2 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <input type="text" placeholder="Calle" className="p-2 border rounded w-full sm:col-span-2 focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <input type="text" placeholder="Número" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <select className="p-2 border rounded w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
                   <option>Región</option>
                   <option>Valparaíso</option>
@@ -54,7 +66,7 @@ export default function Inicio() {
                 </select>
               </div>
               <input type="email" placeholder="e-Mail" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input type="password" placeholder="Contraseña" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <input type="password" placeholder="Repetir contraseña" className="p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-400" />
               </div>
@@ -119,8 +131,8 @@ export default function Inicio() {
 
       {/* --- FOOTER --- */}
       <footer className="bg-gray-900 text-gray-400 py-6 text-center text-sm">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
-          <p>¿Qué esperas para unirte a la red de empleos más grande de Chile?</p>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-2">
+          <p className="text-balance">¿Qué esperas para unirte a la red de empleos más grande de Chile?</p>
           <p className="mt-2 md:mt-0 font-mono text-blue-400">Hosting por Sibel Sama</p>
         </div>
       </footer>
