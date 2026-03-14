@@ -18,11 +18,31 @@ export default async function DashboardPage() {
   if (authError || !authData.user) {
     redirect('/login');
   }
+
+  const { data: perfilUsuario } = await supabase
+    .from('usuarios')
+    .select('nombres, apellido_paterno, promedio_valoracion')
+    .eq('id', authData.user.id)
+    .single();
+
+  const { data: imagenUsuario } = await supabase
+    .from('user_imagenes')
+    .select('image_data_url')
+    .eq('user_id', authData.user.id)
+    .maybeSingle();
   
   // Consulta a Supabase
   const { data: chambasData, error } = await supabase
     .from('chambas')
-    .select('*')
+    .select(`
+      *,
+      empleador:usuarios (
+        id,
+        nombres,
+        apellido_paterno,
+        promedio_valoracion
+      )
+    `)
     .eq('estado', 'PUBLICADA')
     .order('id', { ascending: false });
 
@@ -30,11 +50,34 @@ export default async function DashboardPage() {
     console.error("Error cargando chambas:", error);
   }
 
-  const chambas = chambasData || [];
+  const empleadorIds = Array.from(
+    new Set((chambasData || []).map((chamba) => chamba.empleador_id).filter(Boolean))
+  );
+
+  const { data: imagenesEmpleadores } = empleadorIds.length
+    ? await supabase
+        .from('user_imagenes')
+        .select('user_id, image_data_url')
+        .in('user_id', empleadorIds)
+    : { data: [] as Array<{ user_id: string; image_data_url: string | null }> };
+
+  const mapaImagenes = new Map(
+    (imagenesEmpleadores || []).map((row) => [row.user_id, row.image_data_url])
+  );
+
+  const chambas = (chambasData || []).map((chamba) => ({
+    ...chamba,
+    empleador_imagen_url: mapaImagenes.get(chamba.empleador_id) || null,
+  }));
 
   return (
     <div className="flex h-screen bg-white text-gray-800 font-sans overflow-hidden">
-      <Sidebar />
+      <Sidebar
+        nombres={perfilUsuario?.nombres}
+        apellidoPaterno={perfilUsuario?.apellido_paterno}
+        estrellas={perfilUsuario?.promedio_valoracion}
+        imagenUrl={imagenUsuario?.image_data_url}
+      />
       <Feed chambas={chambas} />
       <ChatPanel />
     </div>

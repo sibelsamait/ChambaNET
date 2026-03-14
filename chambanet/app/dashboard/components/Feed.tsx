@@ -11,6 +11,12 @@ interface Chamba {
   ubicacion_lng: number;
   direccion_texto: string;
   empleador_id: string;
+  empleador_imagen_url?: string | null;
+  empleador?: {
+    nombres?: string | null;
+    apellido_paterno?: string | null;
+    promedio_valoracion?: number | null;
+  } | null;
 }
 
 export default function Feed({ chambas }: { chambas: Chamba[] }) {
@@ -95,10 +101,27 @@ export default function Feed({ chambas }: { chambas: Chamba[] }) {
 
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    {chamba.empleador_imagen_url ? (
+                      <img
+                        src={chamba.empleador_imagen_url}
+                        alt="Foto del empleador"
+                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    )}
                     <div>
-                      <p className="text-xs font-bold text-gray-900">Empleador ID: {chamba.empleador_id.substring(0, 8)}...</p>
-                      <p className="text-blue-700 font-bold text-[10px]">⭐ 4,9</p>
+                      <p className="text-xs font-bold text-gray-900">
+                        {chamba.empleador?.nombres
+                          ? `Empleador: ${chamba.empleador.nombres.split(/\s+/)[0]} ${chamba.empleador.apellido_paterno || ''}`.trim()
+                          : `Empleador ID: ${chamba.empleador_id.substring(0, 8)}...`}
+                      </p>
+                      <p className="text-blue-700 font-bold text-[10px]">
+                        ⭐{' '}
+                        {typeof chamba.empleador?.promedio_valoracion === 'number'
+                          ? chamba.empleador.promedio_valoracion.toFixed(1).replace('.', ',')
+                          : 'Sin valoración'}
+                      </p>
                     </div>
                   </div>
                   
