@@ -1,6 +1,43 @@
+"use client";
+
+import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMsg(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudo iniciar sesión.');
+      }
+
+      router.push('/dashboard');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido al iniciar sesión.';
+      setErrorMsg(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
       {/* --- NAVBAR --- */}
@@ -24,7 +61,7 @@ export default function Login() {
             Bienvenido
           </h1>
           
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Correo electrónico
@@ -32,6 +69,8 @@ export default function Login() {
               <input 
                 type="email" 
                 id="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="Ingresa tu correo" 
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
                 required
@@ -45,17 +84,24 @@ export default function Login() {
               <input 
                 type="password" 
                 id="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="••••••••" 
                 className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
                 required
               />
             </div>
 
+            {errorMsg ? (
+              <p className="text-sm text-red-600">{errorMsg}</p>
+            ) : null}
+
             <button 
               type="submit" 
-              className="w-full bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700 transition mt-4 shadow-sm"
+              disabled={isSubmitting}
+              className="w-full bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700 transition mt-4 shadow-sm disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
             >
-              Ingresar
+              {isSubmitting ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
 

@@ -20,6 +20,14 @@ export default function Sidebar() {
         <button className="w-full text-left p-3 rounded-md hover:bg-blue-50 hover:text-blue-700 transition">Historial de trabajos</button>
         <button className="w-full text-left p-3 rounded-md hover:bg-blue-50 hover:text-blue-700 transition">Valoraciones</button>
       </nav>
+      <div className="p-4 border-t border-gray-200">
+        <a
+          href="/api/auth/logout"
+          className="block w-full text-center p-3 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+        >
+          Cerrar sesión
+        </a>
+      </div>
     </aside>
   );
 }

@@ -1,13 +1,28 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabase } from '../../../lib/supabase'; // 3 niveles arriba
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { chamba_id, trabajador_id } = body;
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
 
-    if (!chamba_id || !trabajador_id) {
-      return NextResponse.json({ error: 'Faltan datos obligatorios (chamba_id o trabajador_id).' }, { status: 400 });
+    if (!accessToken) {
+      return NextResponse.json({ error: 'No autenticado. Inicia sesión para postular.' }, { status: 401 });
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: 'Sesión inválida o expirada.' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { chamba_id } = body;
+    const trabajador_id = authData.user.id;
+
+    if (!chamba_id) {
+      return NextResponse.json({ error: 'Falta dato obligatorio (chamba_id).' }, { status: 400 });
     }
 
     // REGLA DE NEGOCIO: Verificar si el trabajador ya tiene una postulación ACTIVA o ACEPTADA
