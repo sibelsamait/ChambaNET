@@ -162,15 +162,15 @@ export default function MapPanel() {
   }, [isLoading, jobs.length]);
 
   return (
-    <section className="h-full min-h-[420px] rounded-2xl border border-blue-200 bg-white/40 p-2 shadow-[0_10px_30px_rgba(41,87,145,0.15)] sm:p-3">
-      <div className="mb-3 grid grid-cols-1 gap-2 rounded-xl border border-blue-200 bg-white/85 p-3 sm:grid-cols-2 lg:grid-cols-5">
+    <section className="h-full min-h-[360px] rounded-xl border border-blue-200 bg-white/40 p-2 shadow-[0_8px_22px_rgba(41,87,145,0.15)] sm:p-3">
+      <div className="mb-2.5 grid grid-cols-1 gap-2 rounded-lg border border-blue-200 bg-white/85 p-2.5 sm:grid-cols-2 lg:grid-cols-5">
         <label className="flex flex-col text-[11px] font-bold uppercase tracking-wide text-blue-900">
           Oficio
           <input
             value={oficio}
             onChange={(event) => setOficio(event.target.value)}
             placeholder="Ej: ceramista"
-            className="mt-1 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
+            className="mt-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
           />
         </label>
 
@@ -180,7 +180,7 @@ export default function MapPanel() {
             value={minPago}
             onChange={(event) => handlePagoInput(event.target.value, setMinPago)}
             placeholder="10000"
-            className="mt-1 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
+            className="mt-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
           />
         </label>
 
@@ -190,7 +190,7 @@ export default function MapPanel() {
             value={maxPago}
             onChange={(event) => handlePagoInput(event.target.value, setMaxPago)}
             placeholder="90000"
-            className="mt-1 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
+            className="mt-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
           />
         </label>
 
@@ -199,7 +199,7 @@ export default function MapPanel() {
           <select
             value={radiusKm}
             onChange={(event) => setRadiusKm(event.target.value)}
-            className="mt-1 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
+            className="mt-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-gray-800 outline-none focus:ring-2 focus:ring-blue-300"
           >
             <option value="5">5 km</option>
             <option value="10">10 km</option>
@@ -212,7 +212,7 @@ export default function MapPanel() {
         <div className="flex items-end">
           <button
             onClick={handleResetFilters}
-            className="liftable w-full rounded-lg bg-blue-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-blue-600"
+            className="liftable w-full rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-600"
           >
             Limpiar filtros
           </button>
@@ -223,7 +223,7 @@ export default function MapPanel() {
         <p>{statusText}</p>
         {errorMsg ? <p className="text-red-600">{errorMsg}</p> : null}
       </div>
-      <div className="h-[72vh] min-h-[390px]">
+      <div className="h-[62vh] min-h-[330px]">
         <MapCanvas jobs={jobs} userPosition={userPosition} onBoundsChange={handleBoundsChange} />
       </div>
     </section>

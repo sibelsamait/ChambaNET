@@ -130,22 +130,22 @@ export default function ProfileSummary({
 
   return (
     <>
-      <div className="border-b border-blue-200 p-6">
+      <div className="border-b border-blue-200 p-4">
         <div className="flex items-center gap-4">
         <Avatar
           imageUrl={currentImageUrl}
           name={fullName}
           alt="Foto de perfil"
-          className="h-20 w-20 flex-shrink-0 rounded-full border-2 border-blue-200 object-cover"
+          className="h-12 w-12 flex-shrink-0 rounded-full border-2 border-blue-200 object-cover"
           fallbackClassName="text-sm"
         />
         <div>
-          <h2 className="text-3xl font-extrabold text-black sm:text-5xl">{fullName || 'Usuario'}</h2>
-          <p className="flex items-center gap-1 text-2xl font-bold text-gray-900 sm:text-4xl">☆ {ratingText}</p>
+          <h2 className="text-base font-extrabold text-black sm:text-lg">{fullName || 'Usuario'}</h2>
+          <p className="flex items-center gap-1 text-xs font-bold text-gray-900 sm:text-sm">☆ {ratingText}</p>
         </div>
         </div>
       </div>
-      <div className="border-b border-blue-200 px-6 py-4">
+      <div className="border-b border-blue-200 px-4 py-3">
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="file"
