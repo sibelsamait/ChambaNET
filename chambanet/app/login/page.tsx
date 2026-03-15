@@ -41,10 +41,10 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#9ec3ef] to-[#f1f3f7] text-gray-900 font-sans">
-      <header className="w-full bg-[#6aa9f6] px-4 py-4 shadow-[0_12px_24px_rgba(39,77,129,0.35)] sm:px-8">
+      <header className="w-full bg-[#6aa9f6] px-4 py-3 shadow-[0_10px_18px_rgba(39,77,129,0.32)] sm:px-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
         <BrandLogo href="/" size="md" />
-          <nav className="flex items-center gap-3 text-sm font-bold text-white sm:gap-6 sm:text-base">
+          <nav className="flex items-center gap-3 text-xs font-semibold text-white sm:gap-5 sm:text-sm">
           <Link href="/" className="liftable rounded-xl px-3 py-1 hover:bg-white/20 transition">Inicio</Link>
           <Link href="/#registro" className="liftable hidden rounded-xl px-3 py-1 hover:bg-white/20 transition sm:inline">Registrarse</Link>
           <span className="rounded-xl bg-white/25 px-4 py-2 text-white">
@@ -54,15 +54,15 @@ export default function Login() {
         </div>
       </header>
 
-      <main className="flex flex-grow items-center justify-center px-4 py-10">
-        <div className="w-full max-w-xl rounded-[24px] border border-blue-200 bg-white/70 p-6 shadow-[0_18px_34px_rgba(38,83,140,0.28)] backdrop-blur-sm sm:p-8">
-          <h1 className="mb-6 text-center text-4xl font-extrabold text-white drop-shadow-[0_4px_10px_rgba(34,73,123,.3)] sm:text-5xl">
+      <main className="flex flex-grow items-center justify-center px-4 py-8">
+        <div className="w-full max-w-lg rounded-[18px] border border-blue-200 bg-white/70 p-5 shadow-[0_14px_26px_rgba(38,83,140,0.24)] backdrop-blur-sm sm:p-6">
+          <h1 className="mb-5 text-center text-3xl font-extrabold text-white drop-shadow-[0_3px_8px_rgba(34,73,123,.3)] sm:text-4xl">
             Iniciar sesión
           </h1>
           
-          <form className="mx-auto max-w-md space-y-5" onSubmit={handleSubmit}>
+          <form className="mx-auto max-w-sm space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="mb-2 block text-center text-lg font-semibold text-gray-900 sm:text-xl">
+              <label htmlFor="email" className="mb-1.5 block text-center text-base font-semibold text-gray-900 sm:text-lg">
                 Correo electrónico
               </label>
               <input
@@ -71,13 +71,13 @@ export default function Login() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="correo@correo.cl"
-                className="liftable w-full rounded-full border border-transparent bg-[#77b2f0] px-6 py-3 text-center text-lg font-semibold text-white placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
+                className="liftable w-full rounded-full border border-transparent bg-[#77b2f0] px-5 py-2.5 text-center text-base font-semibold text-white placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-center text-lg font-semibold text-gray-900 sm:text-xl">
+              <label htmlFor="password" className="mb-1.5 block text-center text-base font-semibold text-gray-900 sm:text-lg">
                 Contraseña
               </label>
               <input
@@ -86,7 +86,7 @@ export default function Login() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="********"
-                className="liftable w-full rounded-full border border-transparent bg-[#77b2f0] px-6 py-3 text-center text-lg font-semibold text-white placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
+                className="liftable w-full rounded-full border border-transparent bg-[#77b2f0] px-5 py-2.5 text-center text-base font-semibold text-white placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
                 required
               />
             </div>
@@ -98,13 +98,13 @@ export default function Login() {
             <button 
               type="submit" 
               disabled={isSubmitting}
-              className="liftable mx-auto mt-3 block rounded-[22px] bg-[#559ff6] px-12 py-3 text-2xl font-extrabold text-white shadow-[0_10px_0_rgba(90,86,121,0.18)] transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+              className="liftable mx-auto mt-2 block rounded-[18px] bg-[#559ff6] px-10 py-2.5 text-lg font-bold text-white shadow-[0_8px_0_rgba(90,86,121,0.18)] transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
             >
               {isSubmitting ? 'Ingresando...' : 'Ingresar'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-700 sm:text-base">
+          <div className="mt-5 text-center text-xs text-gray-700 sm:text-sm">
             ¿No tienes una cuenta?{' '}
             <Link href="/#registro" className="liftable inline-block rounded-lg px-2 font-bold text-blue-700 hover:underline">
               Regístrate aquí
@@ -113,7 +113,7 @@ export default function Login() {
         </div>
       </main>
 
-      <footer className="bg-[#5d98e6] py-4 text-center text-sm text-gray-900 shadow-[0_-12px_26px_rgba(39,77,129,0.3)]">
+      <footer className="bg-[#5d98e6] py-3 text-center text-xs text-gray-900 shadow-[0_-10px_18px_rgba(39,77,129,0.3)]">
         <p>
           Hosting por <span className="font-extrabold">Sibel Sama</span>
         </p>

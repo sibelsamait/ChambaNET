@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import BrandLogo from './components/BrandLogo';
+import RegistroForm from './components/RegistroForm';
 
 export default function Inicio() {
   return (
@@ -30,53 +32,39 @@ export default function Inicio() {
       </header>
 
       <main className="flex-grow">
-        <section className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-4 py-12 md:grid-cols-2">
-          <div className="rounded-[20px] border border-blue-200 bg-white/70 p-5 shadow-[0_14px_28px_rgba(36,73,121,0.25)]">
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-              Menos vueltas,<br />más chambas
-            </h1>
-            <p className="mt-3 text-base text-gray-700">
-              Publica, conecta y ponte en obra. La mejor red de trabajos esporádicos en Chile.
+        <section className="mx-auto grid max-w-7xl grid-cols-1 items-stretch gap-6 px-4 py-10 md:grid-cols-2">
+          <div className="rounded-[18px] border border-blue-200 bg-white p-6 shadow-[0_12px_24px_rgba(36,73,121,0.2)]">
+            <div className="relative mx-auto h-32 w-32 sm:h-44 sm:w-44">
+              <Image
+                src="/brand/chambanet-logo.svg"
+                alt="Logo ChambaNET"
+                fill
+                priority
+                className="object-contain"
+              />
+            </div>
+            <p className="mt-4 text-center text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+              ChambaNET
             </p>
           </div>
 
-          <div id="registro" className="liftable rounded-[26px] border border-blue-200 bg-[#5ea4f7] p-5 shadow-[0_16px_28px_rgba(33,66,109,0.3)] sm:p-8">
-            <h2 className="mb-5 text-center text-3xl font-extrabold text-white">Crea una cuenta</h2>
-            <form className="space-y-4 text-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input type="text" placeholder="R.U.N" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                <input type="text" placeholder="Nombres" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                <input type="text" placeholder="Apellido Paterno" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                <input type="text" placeholder="Apellido Materno" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <input type="text" placeholder="Calle" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 sm:col-span-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                <input type="text" placeholder="Número" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <select className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                  <option>Región</option>
-                  <option>Valparaíso</option>
-                </select>
-                <select className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                  <option>Comuna</option>
-                  <option>Valparaíso</option>
-                </select>
-              </div>
-              <input type="email" placeholder="e-Mail" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input type="password" placeholder="Contraseña" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                <input type="password" placeholder="Repetir contraseña" className="liftable w-full rounded-lg border border-transparent bg-blue-100 p-3 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-              </div>
-              <p className="text-xs text-blue-100">La contraseña debe contener mínimo 8 caracteres</p>
-              <div className="flex items-center gap-2 mt-2">
-                <input type="checkbox" id="terminos" className="accent-blue-600" />
-                <label htmlFor="terminos" className="text-xs text-white">Confirmo haber leído los Términos y Condiciones</label>
-              </div>
-              <button type="submit" className="liftable mx-auto mt-4 block rounded-full bg-white px-8 py-3 text-xl font-extrabold text-gray-900 hover:bg-blue-50 transition">
-                Crear cuenta
-              </button>
-            </form>
+          <div className="rounded-[18px] border border-blue-200 bg-white/75 p-5 shadow-[0_12px_24px_rgba(36,73,121,0.2)] sm:p-6">
+            <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
+              Menos vueltas, más chambas
+            </h1>
+            <p className="mt-3 text-sm text-gray-700 sm:text-base">
+              Publica, conecta y ponte en obra. La mejor red de trabajos esporádicos en Chile.
+            </p>
+            <a href="#registro" className="liftable mt-5 inline-block rounded-lg bg-[#559ff6] px-5 py-2 text-sm font-bold text-white hover:bg-blue-600">
+              Crear cuenta
+            </a>
+          </div>
+        </section>
+
+        <section id="registro" className="mx-auto max-w-7xl px-4 pb-12">
+          <div className="liftable rounded-[22px] border border-blue-200 bg-[#5ea4f7] p-5 shadow-[0_14px_24px_rgba(33,66,109,0.26)] sm:p-7">
+            <h2 className="mb-4 text-center text-2xl font-extrabold text-white sm:text-3xl">Crea una cuenta</h2>
+            <RegistroForm />
           </div>
         </section>
 
