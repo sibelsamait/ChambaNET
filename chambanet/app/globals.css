@@ -1,29 +1,31 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #fcfeff;
-  --foreground: #1d1e1f;
-  --color-surface: #fcfeff;
-  --color-gray-50: #fcfeff;
-  --color-gray-100: #f3f8fb;
-  --color-gray-200: #dfe8ee;
-  --color-gray-300: #c5d0d8;
-  --color-gray-400: #95a3ae;
-  --color-gray-500: #6c7a84;
-  --color-gray-600: #4f5a63;
-  --color-gray-700: #394147;
-  --color-gray-800: #2a2f33;
-  --color-gray-900: #1d1e1f;
-  --color-blue-50: #eef8ff;
-  --color-blue-100: #d9efff;
-  --color-blue-200: #b9e1ff;
-  --color-blue-300: #87cbff;
-  --color-blue-400: #5ebafc;
-  --color-blue-500: #46b2fa;
-  --color-blue-600: #309dde;
-  --color-blue-700: #217db4;
-  --color-blue-800: #195f88;
-  --color-blue-900: #123f5c;
+  --background: #ecf4ff;
+  --foreground: #101217;
+  --color-surface: #fdfefe;
+  --color-gray-50: #fbfdff;
+  --color-gray-100: #f2f4f8;
+  --color-gray-200: #dde3eb;
+  --color-gray-300: #c1cbda;
+  --color-gray-400: #94a0b1;
+  --color-gray-500: #6d7685;
+  --color-gray-600: #4f5764;
+  --color-gray-700: #3a4049;
+  --color-gray-800: #242931;
+  --color-gray-900: #14171c;
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dcebff;
+  --color-blue-200: #c2ddff;
+  --color-blue-300: #97c4ff;
+  --color-blue-400: #76b0fb;
+  --color-blue-500: #559ff6;
+  --color-blue-600: #4287dc;
+  --color-blue-700: #2f6fc0;
+  --color-blue-800: #205392;
+  --color-blue-900: #163768;
+  --font-sans-fallback: "Open Sans", "Segoe UI", Tahoma, sans-serif;
 }
 
 @theme inline {
@@ -50,19 +52,49 @@
   --color-blue-700: var(--color-blue-700);
   --color-blue-800: var(--color-blue-800);
   --color-blue-900: var(--color-blue-900);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1d1e1f;
-    --foreground: #fcfeff;
-  }
+  --font-sans: var(--font-open-sans), var(--font-sans-fallback);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+.liftable {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.liftable:hover,
+.liftable:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 22px rgba(29, 57, 97, 0.18);
+}
+
+.feed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #76b0fb transparent;
+}
+
+.feed-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.feed-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #76b0fb;
+}
+
+.map-shell .leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 18px;
+}
+
+.map-shell .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+}
+
+.map-shell .leaflet-popup-content {
+  margin: 10px 12px;
 }

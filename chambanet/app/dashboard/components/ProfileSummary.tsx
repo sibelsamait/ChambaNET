@@ -130,27 +130,29 @@ export default function ProfileSummary({
 
   return (
     <>
-      <div className="p-6 flex items-center gap-4 border-b border-gray-200">
+      <div className="border-b border-blue-200 p-6">
+        <div className="flex items-center gap-4">
         <Avatar
           imageUrl={currentImageUrl}
           name={fullName}
           alt="Foto de perfil"
-          className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-gray-200"
+          className="h-20 w-20 flex-shrink-0 rounded-full border-2 border-blue-200 object-cover"
           fallbackClassName="text-sm"
         />
         <div>
-          <h2 className="font-bold text-sm text-gray-900">{fullName || 'Usuario'}</h2>
-          <p className="text-blue-700 font-bold text-xs flex items-center gap-1">⭐ {ratingText}</p>
+          <h2 className="text-3xl font-extrabold text-black sm:text-5xl">{fullName || 'Usuario'}</h2>
+          <p className="flex items-center gap-1 text-2xl font-bold text-gray-900 sm:text-4xl">☆ {ratingText}</p>
+        </div>
         </div>
       </div>
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="border-b border-blue-200 px-6 py-4">
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="file"
             name="image"
             accept="image/png,image/jpeg,image/webp"
             onChange={handleFileChange}
-            className="block w-full text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-blue-50 file:px-2 file:py-1 file:text-blue-700"
+            className="block w-full text-xs text-gray-600 file:mr-2 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:font-semibold file:text-blue-800"
           />
           <p className="text-[11px] text-gray-500">
             Selecciona una imagen desde tu dispositivo. Formatos: PNG, JPEG o WEBP. Máximo 2MB.
@@ -160,7 +162,7 @@ export default function ProfileSummary({
           <button
             type="submit"
             disabled={!selectedFile || isUploading}
-            className="w-full text-center p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition text-xs font-semibold disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="liftable w-full rounded-xl bg-blue-500 p-3 text-center text-sm font-extrabold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
           >
             {isUploading ? 'Actualizando...' : 'Actualizar foto'}
           </button>

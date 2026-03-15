@@ -38,7 +38,7 @@ function BrandContent({ inverted = false, size = 'md', className, textClassName 
   const iconFrame = inverted ? 'ring-1 ring-white/15 bg-transparent' : 'ring-1 ring-black/10 bg-white';
 
   return (
-    <span className={joinClasses('inline-flex items-center font-mono font-bold tracking-tight', currentSize.wrapper, className)}>
+    <span className={joinClasses('inline-flex items-center font-sans font-bold tracking-tight', currentSize.wrapper, className)}>
       <span className={joinClasses('relative overflow-hidden rounded-xl', currentSize.icon, iconFrame)}>
         <Image src={logoSrc} alt="Logo de ChambaNET" fill sizes="48px" priority className="object-contain p-1" />
       </span>
