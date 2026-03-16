@@ -1,6 +1,6 @@
 # ChambaNET
 
-**ChambaNET** es una plataforma de economía colaborativa geo-referenciada diseñada para la gestión de trabajos esporádicos en la región de Valparaíso. El sistema actúa como un intermediario digital que conecta a Empleadores con Trabajadores, priorizando la seguridad, la inmediatez y la reputación local mediante un ecosistema de microservicios Serverless.
+**ChambaNET** es una plataforma de economía colaborativa geo-referenciada diseñada para la gestión de trabajos esporádicos en Chile. El sistema actúa como un intermediario digital que conecta a Empleadores con Trabajadores, priorizando la seguridad, la inmediatez y la reputación local mediante un ecosistema de microservicios Serverless.
 
 ---
 
