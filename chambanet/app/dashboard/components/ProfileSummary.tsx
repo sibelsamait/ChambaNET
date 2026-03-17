@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import Avatar from './Avatar';
 
 interface ProfileSummaryProps {
@@ -15,7 +16,11 @@ export default function ProfileSummary({
 }: ProfileSummaryProps) {
   return (
     <div className="border-b border-blue-200 p-4">
-      <div className="flex items-center gap-4">
+      <Link
+        href="/dashboard/perfil"
+        className="liftable flex items-center gap-4 rounded-2xl p-2 -m-2 transition hover:bg-white/70"
+        aria-label="Ir al perfil del usuario activo"
+      >
         <Avatar
           imageUrl={initialImageUrl}
           name={fullName}
@@ -27,7 +32,7 @@ export default function ProfileSummary({
           <h2 className="text-base font-extrabold text-black sm:text-lg">{fullName || 'Usuario'}</h2>
           <p className="flex items-center gap-1 text-xs font-bold text-gray-900 sm:text-sm">☆ {ratingText}</p>
         </div>
-      </div>
+      </Link>
     </div>
   );
 }

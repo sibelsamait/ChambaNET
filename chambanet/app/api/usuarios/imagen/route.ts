@@ -79,3 +79,40 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function DELETE() {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'No autenticado. Inicia sesión.' }, { status: 401 });
+    }
+
+    const supabase = createSupabaseServerClient(accessToken);
+    const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: 'Sesión inválida o expirada.' }, { status: 401 });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('user_imagenes')
+      .delete()
+      .eq('user_id', authData.user.id);
+
+    if (deleteError) {
+      console.error('Error eliminando imagen de perfil:', deleteError);
+      return NextResponse.json({ error: 'No se pudo eliminar la imagen de perfil.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: 'Imagen de perfil eliminada.' }, { status: 200 });
+  } catch (error: unknown) {
+    const detalle = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('Error interno eliminando imagen:', detalle);
+    return NextResponse.json(
+      { error: 'Error interno al eliminar imagen.', detalle },
+      { status: 500 }
+    );
+  }
+}
