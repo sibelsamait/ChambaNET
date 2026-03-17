@@ -11,28 +11,10 @@ type ChambaPayload = {
   direccion_texto?: string;
 };
 
-async function direccionExisteEnMapa(direccion: string): Promise<boolean> {
-  const q = direccion.trim();
-  if (!q) return false;
-
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=es`
-    );
-    if (!response.ok) return false;
-    const data = await response.json();
-    return Array.isArray(data) && data.length > 0;
-  } catch {
-    return false;
-  }
-}
-
 async function validarPayloadChamba(payload: ChambaPayload): Promise<string | null> {
   const titulo = payload.titulo?.trim() || '';
   const descripcion = payload.descripcion?.trim() || '';
-  const direccion = payload.direccion_texto?.trim() || '';
   const pago = Number(payload.pago_clp);
-  const tieneCoords = Number.isFinite(payload.ubicacion_lat) && Number.isFinite(payload.ubicacion_lng);
 
   if (titulo.length < 8) {
     return 'El título debe tener al menos 8 caracteres.';
@@ -53,19 +35,6 @@ async function validarPayloadChamba(payload: ChambaPayload): Promise<string | nu
   const fecha = new Date(payload.horario);
   if (Number.isNaN(fecha.getTime()) || fecha <= new Date()) {
     return 'La fecha y hora deben ser futuras.';
-  }
-
-  if (!direccion) {
-    return 'La dirección es obligatoria.';
-  }
-
-  if (!tieneCoords) {
-    return 'Debes enviar coordenadas válidas para la ubicación.';
-  }
-
-  const existeDireccion = await direccionExisteEnMapa(direccion);
-  if (!existeDireccion) {
-    return 'La dirección ingresada no existe en el mapa.';
   }
 
   return null;

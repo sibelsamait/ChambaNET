@@ -140,17 +140,12 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [perfilTrabajador, setPerfilTrabajador] = useState<PerfilTrabajador | null>(null);
   const [cargandoPerfil, setCargandoPerfil] = useState(false);
   const [gestionandoPostulacion, setGestionandoPostulacion] = useState<string | null>(null);
-  const [geocodandoDireccion, setGeocodandoDireccion] = useState(false);
-  const [geocodeEstado, setGeocodeEstado] = useState<'ok' | 'error' | 'idle'>('idle');
-  const [direccionModificada, setDireccionModificada] = useState(false);
   const [fotosAdjuntas, setFotosAdjuntas] = useState<File[]>([]);
   const [fotosPreview, setFotosPreview] = useState<string[]>([]);
 
   const articulosRef = useRef<Map<string, HTMLElement>>(new Map());
   const misChembasDropdownRef = useRef<HTMLDivElement>(null);
   const opcionesDropdownRef = useRef<HTMLDivElement>(null);
-  const coordsFuenteRef = useRef<'gps' | 'geocode' | null>(null);
-  const geocodeDireccionRef = useRef<NodeJS.Timeout | null>(null);
 
   const limpiarFotos = useCallback(() => {
     fotosPreview.forEach((url) => URL.revokeObjectURL(url));
@@ -163,7 +158,6 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     const titulo = form.titulo.trim();
     const descripcion = form.descripcion.trim();
     const pago = Number(form.pago_clp);
-    const direccion = form.direccion_texto.trim();
 
     if (titulo.length < 8) {
       errores.push('El título debe tener al menos 8 caracteres.');
@@ -186,22 +180,8 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       }
     }
 
-    if (!direccion) {
-      errores.push('La dirección es obligatoria.');
-    } else {
-      if (geocodandoDireccion) {
-        errores.push('Estamos verificando la dirección en el mapa.');
-      } else if (geocodeEstado === 'error') {
-        errores.push('La dirección no existe en el mapa.');
-      }
-    }
-
-    if (!form.ubicacion_lat || !form.ubicacion_lng) {
-      errores.push('No hay coordenadas válidas para la chamba. Usa GPS o una dirección válida.');
-    }
-
     return errores;
-  }, [form.titulo, form.descripcion, form.pago_clp, form.horario, form.direccion_texto, form.ubicacion_lat, form.ubicacion_lng, geocodandoDireccion, geocodeEstado]);
+  }, [form.titulo, form.descripcion, form.pago_clp, form.horario]);
 
   useEffect(() => {
     setChambasList(chambas);
@@ -277,72 +257,9 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chambasList]);
 
-  // Geocodificación automática al escribir dirección
-  useEffect(() => {
-    if (!direccionModificada) return;
-
-    if (geocodeDireccionRef.current) clearTimeout(geocodeDireccionRef.current);
-
-    const addr = form.direccion_texto.trim();
-    if (!addr) {
-      setGeocodeEstado('idle');
-      if (coordsFuenteRef.current === 'geocode') {
-        coordsFuenteRef.current = null;
-        setForm((prev) => ({ ...prev, ubicacion_lat: '', ubicacion_lng: '' }));
-      }
-      return;
-    }
-
-    geocodeDireccionRef.current = setTimeout(async () => {
-      setGeocodandoDireccion(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1&accept-language=es`
-        );
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          if (coordsFuenteRef.current !== 'gps') {
-            coordsFuenteRef.current = 'geocode';
-            setForm((prev) => ({
-              ...prev,
-              ubicacion_lat: parseFloat(data[0].lat).toFixed(6),
-              ubicacion_lng: parseFloat(data[0].lon).toFixed(6),
-            }));
-          }
-          setGeocodeEstado('ok');
-        } else {
-          if (coordsFuenteRef.current === 'geocode') {
-            coordsFuenteRef.current = null;
-            setForm((prev) => ({ ...prev, ubicacion_lat: '', ubicacion_lng: '' }));
-          }
-          setGeocodeEstado('error');
-        }
-      } catch {
-        setGeocodeEstado('error');
-      } finally {
-        setGeocodandoDireccion(false);
-      }
-    }, 900);
-
-    return () => {
-      if (geocodeDireccionRef.current) clearTimeout(geocodeDireccionRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.direccion_texto, direccionModificada]);
-
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    if (name === 'direccion_texto') {
-      setDireccionModificada(true);
-      setGeocodeEstado('idle');
-      setForm((prev) => ({
-        ...prev,
-        direccion_texto: value,
-        ...(coordsFuenteRef.current !== 'gps' ? { ubicacion_lat: '', ubicacion_lng: '' } : {}),
-      }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handlePublicar = async (e: React.FormEvent) => {
@@ -489,8 +406,6 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     setCargandoGPS(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        coordsFuenteRef.current = 'gps';
-        setGeocodeEstado('ok');
         setForm((prev) => ({
           ...prev,
           ubicacion_lat: pos.coords.latitude.toFixed(6),
@@ -1197,67 +1112,34 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
               {/* Dirección */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Dirección *</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    name="direccion_texto"
-                    value={form.direccion_texto}
-                    onChange={handleFormChange}
-                    required
-                    maxLength={255}
-                    placeholder="Ej: Av. Providencia 1234, Santiago"
-                    className={`w-full rounded-lg border px-3 py-2 pr-8 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300/50 ${
-                      geocodeEstado === 'error' && form.direccion_texto.trim()
-                        ? 'border-red-400 bg-red-50'
-                        : geocodeEstado === 'ok' && form.direccion_texto.trim()
-                        ? 'border-green-400 bg-green-50/40'
-                        : 'border-[#c9ba6a] bg-white/70'
-                    }`}
-                  />
-                  {geocodandoDireccion && (
-                    <span className="absolute right-2.5 top-2 text-sm animate-pulse">🔍</span>
-                  )}
-                </div>
-                {geocodandoDireccion && (
-                  <p className="text-[11px] font-semibold text-blue-600">Verificando dirección en el mapa…</p>
-                )}
-                {!geocodandoDireccion && geocodeEstado === 'ok' && form.direccion_texto.trim() && (
-                  <p className="text-[11px] font-semibold text-green-700">✓ Dirección encontrada en el mapa</p>
-                )}
-                {!geocodandoDireccion && geocodeEstado === 'error' && form.direccion_texto.trim() && (
-                  <p className="text-[11px] font-semibold text-red-600">✗ No se encontró esta dirección en el mapa</p>
-                )}
+                <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Dirección (opcional)</label>
+                <input
+                  type="text"
+                  name="direccion_texto"
+                  value={form.direccion_texto}
+                  onChange={handleFormChange}
+                  maxLength={255}
+                  placeholder="Ej: Av. Providencia 1234, Santiago"
+                  className="w-full rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300/50"
+                />
               </div>
 
-              {/* Coordenadas GPS */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Precisión GPS (opcional)</label>
-                  <button
-                    type="button"
-                    onClick={handleUsarGPS}
-                    disabled={cargandoGPS}
-                    className={`flex items-center gap-1 rounded-full border border-blue-400 px-2.5 py-0.5 text-xs font-bold transition ${
-                      cargandoGPS
-                        ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                    }`}
-                  >
-                    <span>{cargandoGPS ? '⏳' : '🛰️'}</span>
-                    {cargandoGPS ? 'Obteniendo…' : 'Usar GPS'}
-                  </button>
-                </div>
-                <div className="rounded-lg border border-[#c9ba6a] bg-gray-900 px-3 py-2.5 font-mono text-xs min-h-[38px] flex items-center">
-                  {form.ubicacion_lat && form.ubicacion_lng ? (
-                    <span className="text-green-400">📍 {form.ubicacion_lat}, {form.ubicacion_lng}</span>
-                  ) : (
-                    <span className="text-gray-500">Sin coordenadas — escribe una dirección válida o usa el GPS</span>
-                  )}
-                </div>
-                {form.ubicacion_lat && form.ubicacion_lng && coordsFuenteRef.current === 'gps' && (
-                  <p className="text-[11px] font-semibold text-green-700">✓ Geolocalización GPS capturada.</p>
-                )}
+              {/* GPS */}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Ubicación GPS (opcional)</label>
+                <button
+                  type="button"
+                  onClick={handleUsarGPS}
+                  disabled={cargandoGPS}
+                  className={`flex items-center gap-1 rounded-full border border-blue-400 px-2.5 py-0.5 text-xs font-bold transition ${
+                    cargandoGPS
+                      ? 'cursor-not-allowed bg-gray-200 text-gray-400'
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
+                >
+                  <span>{cargandoGPS ? '⏳' : '🛰️'}</span>
+                  {cargandoGPS ? 'Obteniendo…' : 'Usar GPS'}
+                </button>
               </div>
 
               {/* Fotos opcionales */}
