@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   const resultado: MiChambaItem[] = [
     ...(propias || []).map((c) => ({ ...c, rol: 'empleador' as const })),
     ...(postulaciones || []).flatMap((p) => {
-      const c = p.chamba as { id: string; titulo: string; pago_clp: number; estado: string } | null;
+      const c = (p.chamba as unknown) as { id: string; titulo: string; pago_clp: number; estado: string } | null;
       return c ? [{ ...c, rol: 'postulante' as const }] : [];
     }),
   ];
