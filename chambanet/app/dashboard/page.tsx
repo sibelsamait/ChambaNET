@@ -79,7 +79,7 @@ export default async function DashboardPage() {
         estrellas={perfilUsuario?.promedio_valoracion}
         imagenUrl={imagenUsuario?.image_data_url}
       />
-      <Feed chambas={chambas} />
+      <Feed chambas={chambas} userId={authData.user.id} />
       <ChatPanel />
     </div>
   );

@@ -24,6 +24,7 @@ const MapCanvas = dynamic(() => import('./MapCanvas'), {
 });
 
 export default function MapPanel() {
+  const REFRESH_INTERVAL_MS = 30 * 1000;
   const [jobs, setJobs] = useState<GeoChamba[]>([]);
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [boundsQuery, setBoundsQuery] = useState<Record<string, string>>({});
@@ -34,6 +35,9 @@ export default function MapPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingQueryRef = useRef<Record<string, string> | null>(null);
+  const hasLoadedInitiallyRef = useRef(false);
 
   const fetchJobs = useCallback(async (params: Record<string, string> = {}) => {
     const search = new URLSearchParams(params);
@@ -78,6 +82,40 @@ export default function MapPanel() {
     return query;
   }, [maxPago, minPago, oficio, radiusKm]);
 
+  const scheduleFetch = useCallback(
+    (params: Record<string, string>, immediate = false) => {
+      pendingQueryRef.current = params;
+
+      if (immediate && !hasLoadedInitiallyRef.current) {
+        hasLoadedInitiallyRef.current = true;
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+
+        void fetchJobs(params);
+
+        intervalRef.current = setInterval(() => {
+          if (pendingQueryRef.current) {
+            void fetchJobs(pendingQueryRef.current);
+          }
+        }, REFRESH_INTERVAL_MS);
+        return;
+      }
+
+      if (intervalRef.current) {
+        return;
+      }
+
+      intervalRef.current = setInterval(() => {
+        if (pendingQueryRef.current) {
+          void fetchJobs(pendingQueryRef.current);
+        }
+      }, REFRESH_INTERVAL_MS);
+    },
+    [fetchJobs, REFRESH_INTERVAL_MS]
+  );
+
   const refreshWithFilters = useCallback(
     (nextBounds: Record<string, string> = boundsQuery) => {
       const query: Record<string, string> = {
@@ -90,14 +128,18 @@ export default function MapPanel() {
         query.lng = String(userPosition.lng);
       }
 
-      void fetchJobs(query);
+      scheduleFetch(query);
     },
-    [boundsQuery, fetchJobs, getFilterQuery, userPosition]
+    [boundsQuery, getFilterQuery, scheduleFetch, userPosition]
   );
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      refreshWithFilters();
+      const query = {
+        ...boundsQuery,
+        ...getFilterQuery(),
+      };
+      scheduleFetch(query, true);
       return;
     }
 
@@ -107,14 +149,26 @@ export default function MapPanel() {
         const lng = position.coords.longitude;
 
         setUserPosition({ lat, lng });
-        void fetchJobs({ lat: String(lat), lng: String(lng), ...getFilterQuery() });
+        scheduleFetch({ lat: String(lat), lng: String(lng), ...getFilterQuery() }, true);
       },
       () => {
-        refreshWithFilters();
+        const query = {
+          ...boundsQuery,
+          ...getFilterQuery(),
+        };
+        scheduleFetch(query, true);
       },
       { enableHighAccuracy: true, timeout: 9000 }
     );
-  }, [fetchJobs, getFilterQuery, refreshWithFilters]);
+  }, [boundsQuery, getFilterQuery, scheduleFetch]);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     refreshWithFilters();
