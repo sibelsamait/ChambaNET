@@ -142,10 +142,14 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [gestionandoPostulacion, setGestionandoPostulacion] = useState<string | null>(null);
   const [fotosAdjuntas, setFotosAdjuntas] = useState<File[]>([]);
   const [fotosPreview, setFotosPreview] = useState<string[]>([]);
+  const [geocodeEstado, setGeocodeEstado] = useState<'idle' | 'ok'>('idle');
+  const [geocodandoDireccion, setGeocodandoDireccion] = useState(false);
+  const [direccionModificada, setDireccionModificada] = useState(false);
 
   const articulosRef = useRef<Map<string, HTMLElement>>(new Map());
   const misChembasDropdownRef = useRef<HTMLDivElement>(null);
   const opcionesDropdownRef = useRef<HTMLDivElement>(null);
+  const coordsFuenteRef = useRef<string | null>(null);
 
   const limpiarFotos = useCallback(() => {
     fotosPreview.forEach((url) => URL.revokeObjectURL(url));
