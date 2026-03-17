@@ -99,6 +99,79 @@ export async function GET() {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const {
+      chamba_id,
+      empleador_id,
+      titulo,
+      descripcion,
+      pago_clp,
+      horario,
+      ubicacion_lat,
+      ubicacion_lng,
+      direccion_texto,
+    } = body;
+
+    if (!chamba_id || !empleador_id || !titulo || !pago_clp) {
+      return NextResponse.json({ error: 'Faltan datos obligatorios para editar la chamba.' }, { status: 400 });
+    }
+
+    const { data: chamba, error: checkError } = await supabase
+      .from('chambas')
+      .select('id, empleador_id')
+      .eq('id', chamba_id)
+      .maybeSingle();
+
+    if (checkError) {
+      return NextResponse.json({ error: 'No se pudo validar la propiedad de la chamba.' }, { status: 500 });
+    }
+
+    if (!chamba) {
+      return NextResponse.json({ error: 'La chamba no existe o ya fue eliminada.' }, { status: 404 });
+    }
+
+    if (chamba.empleador_id !== empleador_id) {
+      return NextResponse.json({ error: 'No tienes permisos para editar esta publicación.' }, { status: 403 });
+    }
+
+    const { error: postulacionesDeleteError } = await supabase
+      .from('postulaciones')
+      .delete()
+      .eq('chamba_id', chamba_id);
+
+    if (postulacionesDeleteError) {
+      return NextResponse.json({ error: 'No se pudieron eliminar las postulaciones asociadas.' }, { status: 400 });
+    }
+
+    const { data: updatedChamba, error: updateError } = await supabase
+      .from('chambas')
+      .update({
+        titulo,
+        descripcion,
+        pago_clp,
+        horario,
+        ubicacion_lat,
+        ubicacion_lng,
+        direccion_texto,
+        estado: 'PUBLICADA',
+      })
+      .eq('id', chamba_id)
+      .eq('empleador_id', empleador_id)
+      .select()
+      .maybeSingle();
+
+    if (updateError || !updatedChamba) {
+      return NextResponse.json({ error: updateError?.message || 'No se pudo editar la chamba.' }, { status: 400 });
+    }
+
+    return NextResponse.json({ mensaje: 'Chamba editada exitosamente.', chamba: updatedChamba }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Error interno del servidor al editar la chamba.' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
@@ -125,6 +198,15 @@ export async function DELETE(request: Request) {
 
     if (chamba.empleador_id !== empleador_id) {
       return NextResponse.json({ error: 'No tienes permisos para eliminar esta publicación.' }, { status: 403 });
+    }
+
+    const { error: postulacionesDeleteError } = await supabase
+      .from('postulaciones')
+      .delete()
+      .eq('chamba_id', chamba_id);
+
+    if (postulacionesDeleteError) {
+      return NextResponse.json({ error: 'No se pudieron eliminar las postulaciones asociadas.' }, { status: 400 });
     }
 
     const { error: deleteError } = await supabase

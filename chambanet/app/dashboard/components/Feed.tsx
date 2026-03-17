@@ -122,6 +122,8 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [chambasList, setChambasList] = useState<Chamba[]>(chambas);
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [chambaEditandoId, setChambaEditandoId] = useState<string | null>(null);
+  const [menuOpcionesId, setMenuOpcionesId] = useState<string | null>(null);
   const [form, setForm] = useState<FormChamba>(FORM_INICIAL);
   const [publicando, setPublicando] = useState(false);
   const [errorPublicar, setErrorPublicar] = useState<string | null>(null);
@@ -141,6 +143,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
   const articulosRef = useRef<Map<string, HTMLElement>>(new Map());
   const misChembasDropdownRef = useRef<HTMLDivElement>(null);
+  const opcionesDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setChambasList(chambas);
@@ -157,6 +160,17 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     document.addEventListener('mousedown', handleOutside);
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [mostrarMisChambas]);
+
+  useEffect(() => {
+    if (!menuOpcionesId) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (opcionesDropdownRef.current && !opcionesDropdownRef.current.contains(e.target as Node)) {
+        setMenuOpcionesId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpcionesId]);
 
   // Reverse geocoding para chambas con coords pero sin dirección texto
   useEffect(() => {
@@ -210,6 +224,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
     try {
       const payload = {
+        chamba_id: chambaEditandoId,
         empleador_id: userId,
         titulo: form.titulo.trim(),
         descripcion: form.descripcion.trim(),
@@ -221,7 +236,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       };
 
       const res = await fetch('/api/chambas', {
-        method: 'POST',
+        method: chambaEditandoId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -233,8 +248,13 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       }
 
       setMostrarFormulario(false);
+      setChambaEditandoId(null);
       setForm(FORM_INICIAL);
-      alert('¡Chamba publicada exitosamente! Aparecerá en el feed en instantes.');
+      if (chambaEditandoId && data.chamba) {
+        setChambasList((prev) => prev.map((item) => (item.id === data.chamba.id ? { ...item, ...data.chamba } : item)));
+      }
+      alert(chambaEditandoId ? '¡Chamba editada exitosamente! Las postulaciones anteriores fueron eliminadas.' : '¡Chamba publicada exitosamente! Aparecerá en el feed en instantes.');
+      router.refresh();
     } catch (err: unknown) {
       setErrorPublicar(err instanceof Error ? err.message : 'Error desconocido.');
     } finally {
@@ -244,8 +264,34 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
   const handleCancelar = () => {
     setMostrarFormulario(false);
+    setChambaEditandoId(null);
     setForm(FORM_INICIAL);
     setErrorPublicar(null);
+  };
+
+  const formatDateTimeLocalValue = (rawValue?: string) => {
+    if (!rawValue) return '';
+    const date = new Date(rawValue);
+    if (Number.isNaN(date.getTime())) return '';
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60000);
+    return localDate.toISOString().slice(0, 16);
+  };
+
+  const handleEditarChamba = (chamba: Chamba) => {
+    setMenuOpcionesId(null);
+    setErrorPublicar(null);
+    setChambaEditandoId(chamba.id);
+    setForm({
+      titulo: chamba.titulo ?? '',
+      descripcion: chamba.descripcion ?? '',
+      pago_clp: String(chamba.pago_clp ?? ''),
+      horario: formatDateTimeLocalValue(chamba.horario),
+      direccion_texto: chamba.direccion_texto ?? '',
+      ubicacion_lat: chamba.ubicacion_lat != null ? String(chamba.ubicacion_lat) : '',
+      ubicacion_lng: chamba.ubicacion_lng != null ? String(chamba.ubicacion_lng) : '',
+    });
+    setMostrarFormulario(true);
   };
 
   const handleVerMisChambas = useCallback(async () => {
@@ -358,6 +404,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     const confirmar = window.confirm('¿Seguro que quieres eliminar esta chamba? Esta acción no se puede deshacer.');
     if (!confirmar) return;
 
+    setMenuOpcionesId(null);
     setEliminandoId(chambaId);
 
     try {
@@ -918,8 +965,17 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
             {/* Cabecera post-it */}
             <div className="mb-5 flex items-center gap-2.5 border-b-2 border-dashed border-[#d6c989] pb-3">
               <span className="text-2xl">📋</span>
-              <h2 className="text-xl font-extrabold tracking-tight text-black">Publicar Chamba</h2>
+              <h2 className="text-xl font-extrabold tracking-tight text-black">{chambaEditandoId ? 'Editar Chamba' : 'Publicar Chamba'}</h2>
             </div>
+
+            {chambaEditandoId && (
+              <div className="mb-4 rounded-xl border border-amber-300 bg-amber-100/90 px-4 py-3 text-sm text-amber-900">
+                <p className="font-extrabold">Aviso importante</p>
+                <p className="mt-1 font-semibold leading-snug">
+                  Al guardar cambios, se eliminarán todas las postulaciones actuales de esta chamba antes de actualizarla.
+                </p>
+              </div>
+            )}
 
             <form onSubmit={handlePublicar} className="flex flex-col gap-3.5">
               {/* Título */}
@@ -1061,7 +1117,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                       : 'bg-blue-500 hover:bg-blue-600'
                   }`}
                 >
-                  {publicando ? 'Publicando…' : '📌 Publicar'}
+                  {publicando ? (chambaEditandoId ? 'Guardando…' : 'Publicando…') : (chambaEditandoId ? '💾 Guardar cambios' : '📌 Publicar')}
                 </button>
               </div>
             </form>
@@ -1145,7 +1201,12 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
             {/* Publicar chamba */}
             <button
-              onClick={() => setMostrarFormulario(true)}
+              onClick={() => {
+                setChambaEditandoId(null);
+                setForm(FORM_INICIAL);
+                setErrorPublicar(null);
+                setMostrarFormulario(true);
+              }}
               className="liftable flex items-center gap-1.5 rounded-full bg-[#f0e3aa] px-4 py-1.5 text-sm font-extrabold text-gray-900 shadow-md hover:bg-[#ecdfa0] sm:px-5"
             >
               <span className="text-base">📌</span>
@@ -1178,20 +1239,52 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     }`}
                   >
                     {chamba.empleador_id === userId && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleEliminarChamba(chamba.id); }}
-                        disabled={eliminandoId === chamba.id}
-                        aria-label="Eliminar publicación"
-                        title="Eliminar publicación"
-                        className={`absolute right-2 top-2 rounded-full border border-red-200 bg-white/80 px-2 py-1 text-xs transition ${
-                          eliminandoId === chamba.id
-                            ? 'cursor-not-allowed text-gray-400'
-                            : 'text-red-600 hover:bg-red-50 hover:text-red-700'
-                        }`}
-                      >
-                        {eliminandoId === chamba.id ? '...' : '🗑'}
-                      </button>
+                      <div ref={menuOpcionesId === chamba.id ? opcionesDropdownRef : undefined} className="absolute right-2 top-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpcionesId((prev) => (prev === chamba.id ? null : chamba.id));
+                          }}
+                          disabled={eliminandoId === chamba.id}
+                          aria-label="Opciones de la publicación"
+                          title="Opciones"
+                          className={`rounded-full border bg-white/85 px-2.5 py-1 text-sm font-black transition ${
+                            eliminandoId === chamba.id
+                              ? 'cursor-not-allowed border-gray-200 text-gray-400'
+                              : 'border-blue-100 text-gray-700 hover:bg-white'
+                          }`}
+                        >
+                          {eliminandoId === chamba.id ? '…' : '⋯'}
+                        </button>
+
+                        {menuOpcionesId === chamba.id && (
+                          <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[170px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.18)]">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditarChamba(chamba);
+                              }}
+                              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-bold text-gray-700 transition hover:bg-blue-50"
+                            >
+                              <span>✏️</span>
+                              <span>Editar chamba</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEliminarChamba(chamba.id);
+                              }}
+                              className="flex w-full items-center gap-2 border-t border-gray-100 px-4 py-2.5 text-left text-sm font-bold text-red-600 transition hover:bg-red-50"
+                            >
+                              <span>🗑</span>
+                              <span>Eliminarla</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                       <div className="flex min-w-[100px] items-center gap-2 border-b border-dashed border-[#d6c989] pb-2.5 sm:mr-3 sm:min-h-[100px] sm:w-[118px] sm:flex-col sm:justify-center sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
