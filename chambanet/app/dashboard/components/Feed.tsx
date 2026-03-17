@@ -20,6 +20,7 @@ interface Chamba {
   descripcion: string;
   pago_clp: number;
   estado: string;
+  horario?: string;
   ubicacion_lat: number;
   ubicacion_lng: number;
   direccion_texto: string;
@@ -60,6 +61,60 @@ interface MiChambaItem {
   rol: 'empleador' | 'postulante';
 }
 
+interface PostulanteItem {
+  postulacion_id: string;
+  estado: string;
+  trabajador: {
+    id: string;
+    nombres: string;
+    apellido_paterno: string;
+    apellido_materno?: string | null;
+    rut?: string | null;
+    promedio_valoracion?: number | null;
+    imagen_url?: string | null;
+  };
+}
+
+interface PerfilTrabajador {
+  id: string;
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno?: string | null;
+  rut?: string | null;
+  promedio_valoracion?: number | null;
+  imagen_url?: string | null;
+  trabajos_completados: number;
+  valoraciones: { estrellas: number; comentario: string | null; emisor_nombre: string }[];
+}
+
+interface ChambaDetalleFull {
+  chamba: {
+    id: string;
+    titulo: string;
+    descripcion: string;
+    pago_clp: number;
+    horario: string;
+    estado: string;
+    direccion_texto: string;
+    empleador_id: string;
+  };
+  postulantes_count: number;
+  ya_postule: boolean;
+  postulacion_id: string | null;
+  empleador: {
+    id: string;
+    nombres: string;
+    apellido_paterno: string;
+    rut?: string;
+    promedio_valoracion?: number;
+    imagen_url?: string | null;
+    publicaciones_realizadas: number;
+    trabajos_completados: number;
+  };
+  valoraciones: { estrellas: number; comentario: string | null; emisor_nombre: string }[];
+  postulantes?: PostulanteItem[];
+}
+
 export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: string }) {
   const router = useRouter();
   const [vista, setVista] = useState<'listado' | 'mapa'>('listado');
@@ -77,6 +132,12 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [cargandoMisChambas, setCargandoMisChambas] = useState(false);
   const [destacadoId, setDestacadoId] = useState<string | null>(null);
   const [chambaDetalle, setChambaDetalle] = useState<MiChambaItem | null>(null);
+  const [modalChambaId, setModalChambaId] = useState<string | null>(null);
+  const [modalChambaData, setModalChambaData] = useState<ChambaDetalleFull | null>(null);
+  const [cargandoModal, setCargandoModal] = useState(false);
+  const [perfilTrabajador, setPerfilTrabajador] = useState<PerfilTrabajador | null>(null);
+  const [cargandoPerfil, setCargandoPerfil] = useState(false);
+  const [gestionandoPostulacion, setGestionandoPostulacion] = useState<string | null>(null);
 
   const articulosRef = useRef<Map<string, HTMLElement>>(new Map());
   const misChembasDropdownRef = useRef<HTMLDivElement>(null);
@@ -321,8 +382,500 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     }
   };
 
+  const handleAbrirDetalle = useCallback(async (chambaId: string) => {
+    setModalChambaId(chambaId);
+    setCargandoModal(true);
+    setModalChambaData(null);
+    try {
+      const res = await fetch(`/api/chambas/${chambaId}?userId=${userId}`);
+      const data = await res.json();
+      if (res.ok) {
+        // Si el usuario es el dueño, también cargar los postulantes
+        if (data.chamba?.empleador_id === userId) {
+          const posRes = await fetch(`/api/chambas/${chambaId}/postulantes?empleadorId=${userId}`);
+          if (posRes.ok) {
+            const posData = await posRes.json();
+            data.postulantes = posData.postulantes ?? [];
+          }
+        }
+        setModalChambaData(data);
+      }
+    } catch {
+      // falla silenciosa
+    } finally {
+      setCargandoModal(false);
+    }
+  }, [userId]);
+
+  const handleVerPerfilTrabajador = async (trabajadorId: string) => {
+    setCargandoPerfil(true);
+    setPerfilTrabajador(null);
+    try {
+      const res = await fetch(`/api/usuarios/${trabajadorId}/perfil`);
+      const data = await res.json();
+      if (res.ok) setPerfilTrabajador(data);
+    } catch {
+      // falla silenciosa
+    } finally {
+      setCargandoPerfil(false);
+    }
+  };
+
+  const handleAprobarPostulante = async (postulacionId: string) => {
+    if (!window.confirm('¿Confirmar la aprobación de este postulante? Se rechazará a los demás y la chamba pasará a EN OBRA.')) return;
+    setGestionandoPostulacion(postulacionId);
+    try {
+      const res = await fetch(`/api/postulaciones/${postulacionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'ACEPTAR' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al aprobar.');
+      // Actualizar estado local de postulantes
+      setModalChambaData((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          postulantes: prev.postulantes?.map((p) =>
+            p.postulacion_id === postulacionId
+              ? { ...p, estado: 'ACEPTADA' }
+              : { ...p, estado: 'RECHAZADA' }
+          ),
+        };
+      });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al aprobar.');
+    } finally {
+      setGestionandoPostulacion(null);
+    }
+  };
+
+  const handleRechazarPostulante = async (postulacionId: string) => {
+    if (!window.confirm('¿Rechazar a este postulante?')) return;
+    setGestionandoPostulacion(postulacionId);
+    try {
+      const res = await fetch(`/api/postulaciones/${postulacionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'RECHAZAR' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al rechazar.');
+      setModalChambaData((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          postulantes: prev.postulantes?.map((p) =>
+            p.postulacion_id === postulacionId ? { ...p, estado: 'RECHAZADA' } : p
+          ),
+        };
+      });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al rechazar.');
+    } finally {
+      setGestionandoPostulacion(null);
+    }
+  };
+
+  const handleCancelarPostulacion = async (postulacionId: string) => {
+    if (!window.confirm('¿Cancelar tu postulación para esta chamba?')) return;
+    try {
+      const res = await fetch(`/api/postulaciones/${postulacionId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'No se pudo cancelar la postulación.');
+        return;
+      }
+      setModalChambaData((prev) =>
+        prev ? { ...prev, ya_postule: false, postulacion_id: null, postulantes_count: Math.max(0, prev.postulantes_count - 1) } : null
+      );
+    } catch {
+      alert('Error al cancelar la postulación.');
+    }
+  };
+
+  const handlePostularEnModal = async (chambaId: string) => {
+    setPostulandoId(chambaId);
+    try {
+      const res = await fetch('/api/postulaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chamba_id: chambaId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al postular');
+      setModalChambaData((prev) =>
+        prev ? {
+          ...prev,
+          ya_postule: true,
+          postulacion_id: data.postulacion?.id ?? null,
+          postulantes_count: prev.postulantes_count + 1,
+        } : null
+      );
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error al postular.');
+    } finally {
+      setPostulandoId(null);
+    }
+  };
+
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-blue-500/95 text-white">
+      {/* Panel perfil completo del trabajador (z-[60], sobre el modal de chamba) */}
+      {(perfilTrabajador || cargandoPerfil) && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 py-6"
+          onClick={() => setPerfilTrabajador(null)}
+        >
+          <div
+            className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl shadow-[0_16px_48px_rgba(30,64,175,0.50)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera amarilla */}
+            <div className="rounded-t-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <h2 className="text-lg font-extrabold text-black">Perfil del Trabajador</h2>
+                <button
+                  onClick={() => setPerfilTrabajador(null)}
+                  className="shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-black/10 hover:text-gray-700"
+                  aria-label="Cerrar"
+                >
+                  ✕
+                </button>
+              </div>
+              {cargandoPerfil && !perfilTrabajador ? (
+                <p className="py-8 text-center text-sm text-gray-500">Cargando perfil…</p>
+              ) : perfilTrabajador ? (
+                <div className="flex items-center gap-4">
+                  <Avatar
+                    imageUrl={perfilTrabajador.imagen_url}
+                    name={`${perfilTrabajador.nombres} ${perfilTrabajador.apellido_paterno}`}
+                    alt="Foto del trabajador"
+                    className="h-20 w-20 shrink-0 rounded-full border-2 border-blue-200 object-cover"
+                    fallbackClassName="text-xl"
+                  />
+                  <div className="space-y-0.5">
+                    <p className="text-base font-extrabold leading-tight text-black">
+                      {perfilTrabajador.nombres} {perfilTrabajador.apellido_paterno}
+                      {perfilTrabajador.apellido_materno ? ` ${perfilTrabajador.apellido_materno}` : ''}
+                    </p>
+                    {perfilTrabajador.rut && (
+                      <p className="text-sm font-semibold text-gray-600">{perfilTrabajador.rut}</p>
+                    )}
+                    <p className="text-base font-black text-gray-900">
+                      ★{' '}
+                      {typeof perfilTrabajador.promedio_valoracion === 'number'
+                        ? perfilTrabajador.promedio_valoracion.toFixed(1).replace('.', ',')
+                        : '-'}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Trabajos completados:{' '}
+                      <span className="font-extrabold text-blue-700">{perfilTrabajador.trabajos_completados}</span>
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Sección azul: valoraciones */}
+            {perfilTrabajador && (
+              <div className="rounded-b-2xl bg-blue-500 p-5 text-white">
+                <h3 className="mb-3 text-center text-base font-extrabold">Valoraciones recibidas</h3>
+                {perfilTrabajador.valoraciones.length === 0 ? (
+                  <p className="text-center text-sm text-blue-100">Aún no tiene valoraciones.</p>
+                ) : (
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {perfilTrabajador.valoraciones.map((val, i) => (
+                      <div
+                        key={i}
+                        className="shrink-0 w-36 rounded-xl border border-white/25 bg-white/15 p-3 text-center"
+                      >
+                        <p className="text-lg font-extrabold">{val.estrellas}</p>
+                        <p className="text-xs font-bold text-yellow-300">
+                          {'★'.repeat(val.estrellas)}{'☆'.repeat(5 - val.estrellas)}
+                        </p>
+                        {val.comentario && (
+                          <p className="mt-1 text-xs italic text-white/90 leading-tight line-clamp-2">&ldquo;{val.comentario}&rdquo;</p>
+                        )}
+                        <p className="mt-1.5 text-xs font-bold">{val.emisor_nombre}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal detalle completo de chamba */}
+      {modalChambaId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6"
+          onClick={() => { setModalChambaId(null); setModalChambaData(null); }}
+        >
+          <div
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-[0_16px_48px_rgba(30,64,175,0.40)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sección amarilla: datos de la chamba */}
+            <div className="rounded-t-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <h2 className="text-xl font-extrabold leading-tight text-black">
+                  {modalChambaData?.chamba.titulo ?? chambasList.find((c) => c.id === modalChambaId)?.titulo ?? '…'}
+                </h2>
+                <button
+                  onClick={() => { setModalChambaId(null); setModalChambaData(null); }}
+                  className="shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-black/10 hover:text-gray-700"
+                  aria-label="Cerrar"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {cargandoModal ? (
+                <p className="py-8 text-center text-sm text-gray-500">Cargando detalle…</p>
+              ) : modalChambaData ? (
+                <>
+                  {/* Mini empleador */}
+                  <div className="mb-3 flex items-center gap-2.5 border-b border-dashed border-[#d6c989] pb-3">
+                    <Avatar
+                      imageUrl={modalChambaData.empleador.imagen_url}
+                      name={`${modalChambaData.empleador.nombres} ${modalChambaData.empleador.apellido_paterno}`}
+                      alt="Foto del empleador"
+                      className="h-10 w-10 rounded-full border-2 border-blue-200 object-cover"
+                      fallbackClassName="text-xs"
+                    />
+                    <div>
+                      <p className="text-xs font-extrabold text-gray-800">
+                        {modalChambaData.empleador.nombres?.split(' ')[0]} {modalChambaData.empleador.apellido_paterno}
+                      </p>
+                      <p className="text-sm font-black text-gray-900">
+                        ★{' '}
+                        {typeof modalChambaData.empleador.promedio_valoracion === 'number'
+                          ? modalChambaData.empleador.promedio_valoracion.toFixed(1).replace('.', ',')
+                          : '-'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mb-3 text-sm leading-snug text-gray-800">
+                    {modalChambaData.chamba.descripcion || 'Sin descripción disponible.'}
+                  </p>
+
+                  <div className="mb-4 space-y-1.5 text-sm font-bold text-gray-900">
+                    <p>💸 CLP$ {modalChambaData.chamba.pago_clp.toLocaleString('es-CL')}</p>
+                    {(() => {
+                      const { date, time } = formatDateAndTime(modalChambaData.chamba.horario);
+                      return <p>🕒 {date}&nbsp;&nbsp;{time}</p>;
+                    })()}
+                    <p>📍 {modalChambaData.chamba.direccion_texto || localidades.get(modalChambaId) || 'Ubicación por confirmar'}</p>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1.5">
+                    {modalChambaData.ya_postule ? (
+                      <>
+                        <button
+                          disabled
+                          className="w-full cursor-not-allowed rounded-full bg-gray-300 px-5 py-2.5 text-sm font-bold text-gray-600"
+                        >
+                          Postulado
+                        </button>
+                        {modalChambaData.postulacion_id && (
+                          <button
+                            onClick={() => handleCancelarPostulacion(modalChambaData.postulacion_id!)}
+                            className="text-xs text-red-600 underline hover:text-red-800"
+                          >
+                            Cancelar postulación
+                          </button>
+                        )}
+                      </>
+                    ) : modalChambaData.chamba.empleador_id !== userId ? (
+                      <button
+                        onClick={() => handlePostularEnModal(modalChambaData.chamba.id)}
+                        disabled={postulandoId === modalChambaData.chamba.id}
+                        className={`liftable w-full rounded-full px-5 py-2.5 text-sm font-bold text-white ${
+                          postulandoId === modalChambaData.chamba.id
+                            ? 'cursor-not-allowed bg-gray-400'
+                            : 'bg-blue-500 hover:bg-blue-600'
+                        }`}
+                      >
+                        {postulandoId === modalChambaData.chamba.id ? 'Enviando…' : 'Postular'}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <p className="mt-3 text-center text-sm font-semibold text-gray-700">
+                    Postulantes actuales:{' '}
+                    <span className="font-extrabold text-blue-700">{modalChambaData.postulantes_count}</span>
+                  </p>
+                </>
+              ) : null}
+            </div>
+
+            {/* Sección azul: postulantes (si eres el dueño) o perfil del empleador */}
+            {modalChambaData && (
+              <div className="rounded-b-2xl bg-blue-500 p-5 text-white">
+                {modalChambaData.chamba.empleador_id === userId ? (
+                  /* ── Vista del DUEÑO: tarjetas de postulantes ── */
+                  <>
+                    <h3 className="mb-4 text-center text-lg font-extrabold tracking-tight">
+                      Postulantes ({modalChambaData.postulantes?.length ?? 0})
+                    </h3>
+                    {!modalChambaData.postulantes || modalChambaData.postulantes.length === 0 ? (
+                      <p className="text-center text-sm text-blue-100">Aún no hay postulantes para esta chamba.</p>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {modalChambaData.postulantes.map((p) => {
+                          const nombre = `${p.trabajador.nombres?.split(' ')[0] ?? ''} ${p.trabajador.apellido_paterno ?? ''}`.trim();
+                          const isPendiente = p.estado === 'PENDIENTE';
+                          const isAceptado = p.estado === 'ACEPTADA';
+                          const isRechazado = p.estado === 'RECHAZADA';
+                          const ocupado = gestionandoPostulacion === p.postulacion_id;
+                          return (
+                            <div
+                              key={p.postulacion_id}
+                              className={`rounded-xl border p-3 transition ${
+                                isRechazado
+                                  ? 'border-white/10 bg-white/5 opacity-50'
+                                  : isAceptado
+                                  ? 'border-green-300/50 bg-green-500/20'
+                                  : 'border-white/25 bg-white/15'
+                              }`}
+                            >
+                              {/* Tarjeta clickable → ver perfil completo */}
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-3 text-left"
+                                onClick={() => handleVerPerfilTrabajador(p.trabajador.id)}
+                              >
+                                <Avatar
+                                  imageUrl={p.trabajador.imagen_url}
+                                  name={nombre}
+                                  alt={`Foto de ${nombre}`}
+                                  className="h-12 w-12 shrink-0 rounded-full border-2 border-white/50 object-cover"
+                                  fallbackClassName="text-sm"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="truncate font-extrabold leading-tight">{nombre}</p>
+                                  {p.trabajador.rut && (
+                                    <p className="text-xs text-blue-100">{p.trabajador.rut}</p>
+                                  )}
+                                  <p className="text-sm font-black">
+                                    ★{' '}
+                                    {typeof p.trabajador.promedio_valoracion === 'number'
+                                      ? p.trabajador.promedio_valoracion.toFixed(1).replace('.', ',')
+                                      : '-'}
+                                  </p>
+                                </div>
+                                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                                  isAceptado
+                                    ? 'bg-green-300 text-green-900'
+                                    : isRechazado
+                                    ? 'bg-red-200 text-red-800'
+                                    : 'bg-yellow-200 text-yellow-900'
+                                }`}>
+                                  {isAceptado ? 'Aceptado' : isRechazado ? 'Rechazado' : 'Pendiente'}
+                                </span>
+                              </button>
+
+                              {/* Botones Aprobar / Rechazar (solo si PENDIENTE) */}
+                              {isPendiente && (
+                                <div className="mt-2.5 flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={!!gestionandoPostulacion}
+                                    onClick={() => handleAprobarPostulante(p.postulacion_id)}
+                                    className={`liftable flex-1 rounded-full py-1.5 text-xs font-extrabold text-white transition ${
+                                      ocupado ? 'cursor-not-allowed bg-gray-400' : 'bg-green-500 hover:bg-green-600'
+                                    }`}
+                                  >
+                                    {ocupado ? '…' : '✅ Aprobar'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={!!gestionandoPostulacion}
+                                    onClick={() => handleRechazarPostulante(p.postulacion_id)}
+                                    className={`liftable flex-1 rounded-full py-1.5 text-xs font-extrabold text-white transition ${
+                                      ocupado ? 'cursor-not-allowed bg-gray-400' : 'bg-red-500 hover:bg-red-600'
+                                    }`}
+                                  >
+                                    {ocupado ? '…' : '❌ Rechazar'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* ── Vista del TRABAJADOR/VISITANTE: perfil del empleador ── */
+                  <>
+                    <h3 className="mb-4 text-center text-lg font-extrabold tracking-tight">Perfil del Empleador</h3>
+                    <div className="mb-4 flex items-center gap-4">
+                      <div className="flex flex-col items-center gap-1">
+                        <Avatar
+                          imageUrl={modalChambaData.empleador.imagen_url}
+                          name={`${modalChambaData.empleador.nombres} ${modalChambaData.empleador.apellido_paterno}`}
+                          alt="Foto del empleador"
+                          className="h-20 w-20 rounded-full border-4 border-white/50 object-cover"
+                          fallbackClassName="text-xl"
+                        />
+                        <p className="text-xl font-black">
+                          ☆{' '}
+                          {typeof modalChambaData.empleador.promedio_valoracion === 'number'
+                            ? modalChambaData.empleador.promedio_valoracion.toFixed(1).replace('.', ',')
+                            : '-'}
+                        </p>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-base font-extrabold leading-tight">
+                          {modalChambaData.empleador.nombres} {modalChambaData.empleador.apellido_paterno}
+                        </p>
+                        {modalChambaData.empleador.rut && (
+                          <p className="text-sm font-semibold text-blue-100">{modalChambaData.empleador.rut}</p>
+                        )}
+                        <p className="text-sm text-blue-100">
+                          Publicaciones realizadas:{' '}
+                          <span className="font-extrabold text-white">{modalChambaData.empleador.publicaciones_realizadas}</span>
+                        </p>
+                        <p className="text-sm text-blue-100">
+                          Trabajos completados:{' '}
+                          <span className="font-extrabold text-white">{modalChambaData.empleador.trabajos_completados}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {modalChambaData.valoraciones.length > 0 && (
+                      <div className="flex gap-3 overflow-x-auto pb-1">
+                        {modalChambaData.valoraciones.map((val, i) => (
+                          <div
+                            key={i}
+                            className="shrink-0 w-36 rounded-xl border border-white/25 bg-white/15 p-3 text-center"
+                          >
+                            <p className="text-lg font-extrabold">{val.estrellas}</p>
+                            <p className="text-xs font-bold text-yellow-300">
+                              {'★'.repeat(val.estrellas)}{'☆'.repeat(5 - val.estrellas)}
+                            </p>
+                            {val.comentario && (
+                              <p className="mt-1 text-xs italic text-white/90 leading-tight line-clamp-2">&ldquo;{val.comentario}&rdquo;</p>
+                            )}
+                            <p className="mt-1.5 text-xs font-bold">{val.emisor_nombre}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal detalle chamba (chambas no visibles en el feed) */}
       {chambaDetalle && (
         <div
@@ -608,7 +1161,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           chambasList.length > 0 ? (
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-3.5">
               {chambasList.map((chamba) => {
-                const horario = formatDateAndTime((chamba as Chamba & { horario?: string }).horario);
+                const horario = formatDateAndTime(chamba.horario);
 
                 return (
                   <article
@@ -617,7 +1170,8 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                       if (el) articulosRef.current.set(chamba.id, el);
                       else articulosRef.current.delete(chamba.id);
                     }}
-                    className={`liftable relative rounded-xl border px-3.5 py-3.5 text-gray-900 shadow-[0_8px_18px_rgba(58,82,123,0.18)] sm:px-4 transition-all duration-300 ${
+                    onClick={() => handleAbrirDetalle(chamba.id)}
+                    className={`liftable relative cursor-pointer rounded-xl border px-3.5 py-3.5 text-gray-900 shadow-[0_8px_18px_rgba(58,82,123,0.18)] sm:px-4 transition-all duration-300 ${
                       destacadoId === chamba.id
                         ? 'border-blue-500 bg-[#f0e3aa] ring-2 ring-blue-400 ring-offset-2'
                         : 'border-[#d7cc83] bg-[#f0e3aa]'
@@ -626,7 +1180,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     {chamba.empleador_id === userId && (
                       <button
                         type="button"
-                        onClick={() => handleEliminarChamba(chamba.id)}
+                        onClick={(e) => { e.stopPropagation(); handleEliminarChamba(chamba.id); }}
                         disabled={eliminandoId === chamba.id}
                         aria-label="Eliminar publicación"
                         title="Eliminar publicación"
@@ -685,7 +1239,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
                         <div className="pt-1.5">
                           <button
-                            onClick={() => handlePostular(chamba.id)}
+                            onClick={(e) => { e.stopPropagation(); handlePostular(chamba.id); }}
                             disabled={postulandoId === chamba.id}
                             className={`liftable w-full rounded-full px-5 py-2 text-sm font-semibold text-white sm:w-auto ${
                               postulandoId === chamba.id
