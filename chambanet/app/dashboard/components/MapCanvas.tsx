@@ -19,6 +19,7 @@ interface MapCanvasProps {
   jobs: MapChamba[];
   userPosition: { lat: number; lng: number } | null;
   onBoundsChange: (bounds: LatLngBounds) => void;
+  onSelectChamba?: (id: string) => void;
 }
 
 const fallbackCenter: [number, number] = [-33.0472, -71.6127];
@@ -36,7 +37,7 @@ function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (bounds: LatLngBoun
   return null;
 }
 
-export default function MapCanvas({ jobs, userPosition, onBoundsChange }: MapCanvasProps) {
+export default function MapCanvas({ jobs, userPosition, onBoundsChange, onSelectChamba }: MapCanvasProps) {
   const center = userPosition ? ([userPosition.lat, userPosition.lng] as [number, number]) : fallbackCenter;
 
   const jobIcon = useMemo(
@@ -95,7 +96,16 @@ export default function MapCanvas({ jobs, userPosition, onBoundsChange }: MapCan
             <Marker key={job.id} position={[job.ubicacion_lat, job.ubicacion_lng]} icon={jobIcon}>
               <Popup>
                 <div className="text-[13px] leading-tight">
-                  <p className="font-extrabold">{job.titulo}</p>
+                  {onSelectChamba ? (
+                    <button
+                      onClick={() => onSelectChamba(job.id)}
+                      className="mb-0.5 block text-left font-extrabold text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    >
+                      {job.titulo}
+                    </button>
+                  ) : (
+                    <p className="font-extrabold">{job.titulo}</p>
+                  )}
                   <p className="font-semibold text-blue-700">CLP$ {job.pago_clp.toLocaleString('es-CL')}</p>
                   <p className="text-gray-600">{job.direccion_texto}</p>
                   {typeof job.distancia_km === 'number' ? (

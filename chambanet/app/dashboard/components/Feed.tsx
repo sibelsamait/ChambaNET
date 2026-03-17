@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Avatar from './Avatar';
@@ -140,14 +140,78 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [perfilTrabajador, setPerfilTrabajador] = useState<PerfilTrabajador | null>(null);
   const [cargandoPerfil, setCargandoPerfil] = useState(false);
   const [gestionandoPostulacion, setGestionandoPostulacion] = useState<string | null>(null);
+  const [geocodandoDireccion, setGeocodandoDireccion] = useState(false);
+  const [geocodeEstado, setGeocodeEstado] = useState<'ok' | 'error' | 'idle'>('idle');
+  const [direccionModificada, setDireccionModificada] = useState(false);
+  const [fotosAdjuntas, setFotosAdjuntas] = useState<File[]>([]);
+  const [fotosPreview, setFotosPreview] = useState<string[]>([]);
 
   const articulosRef = useRef<Map<string, HTMLElement>>(new Map());
   const misChembasDropdownRef = useRef<HTMLDivElement>(null);
   const opcionesDropdownRef = useRef<HTMLDivElement>(null);
+  const coordsFuenteRef = useRef<'gps' | 'geocode' | null>(null);
+  const geocodeDireccionRef = useRef<NodeJS.Timeout | null>(null);
+
+  const limpiarFotos = useCallback(() => {
+    fotosPreview.forEach((url) => URL.revokeObjectURL(url));
+    setFotosAdjuntas([]);
+    setFotosPreview([]);
+  }, [fotosPreview]);
+
+  const erroresPublicacion = useMemo(() => {
+    const errores: string[] = [];
+    const titulo = form.titulo.trim();
+    const descripcion = form.descripcion.trim();
+    const pago = Number(form.pago_clp);
+    const direccion = form.direccion_texto.trim();
+
+    if (titulo.length < 8) {
+      errores.push('El título debe tener al menos 8 caracteres.');
+    }
+
+    if (descripcion.length < 15) {
+      errores.push('La descripción debe tener al menos 15 caracteres.');
+    }
+
+    if (!Number.isFinite(pago) || pago < 1000) {
+      errores.push('El pago debe ser de al menos CLP$ 1.000.');
+    }
+
+    if (!form.horario) {
+      errores.push('La fecha y hora son obligatorias.');
+    } else {
+      const fecha = new Date(form.horario);
+      if (Number.isNaN(fecha.getTime()) || fecha <= new Date()) {
+        errores.push('La fecha y hora deben ser posteriores al momento actual.');
+      }
+    }
+
+    if (!direccion) {
+      errores.push('La dirección es obligatoria.');
+    } else {
+      if (geocodandoDireccion) {
+        errores.push('Estamos verificando la dirección en el mapa.');
+      } else if (geocodeEstado === 'error') {
+        errores.push('La dirección no existe en el mapa.');
+      }
+    }
+
+    if (!form.ubicacion_lat || !form.ubicacion_lng) {
+      errores.push('No hay coordenadas válidas para la chamba. Usa GPS o una dirección válida.');
+    }
+
+    return errores;
+  }, [form.titulo, form.descripcion, form.pago_clp, form.horario, form.direccion_texto, form.ubicacion_lat, form.ubicacion_lng, geocodandoDireccion, geocodeEstado]);
 
   useEffect(() => {
     setChambasList(chambas);
   }, [chambas]);
+
+  useEffect(() => {
+    return () => {
+      fotosPreview.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [fotosPreview]);
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -213,12 +277,82 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chambasList]);
 
+  // Geocodificación automática al escribir dirección
+  useEffect(() => {
+    if (!direccionModificada) return;
+
+    if (geocodeDireccionRef.current) clearTimeout(geocodeDireccionRef.current);
+
+    const addr = form.direccion_texto.trim();
+    if (!addr) {
+      setGeocodeEstado('idle');
+      if (coordsFuenteRef.current === 'geocode') {
+        coordsFuenteRef.current = null;
+        setForm((prev) => ({ ...prev, ubicacion_lat: '', ubicacion_lng: '' }));
+      }
+      return;
+    }
+
+    geocodeDireccionRef.current = setTimeout(async () => {
+      setGeocodandoDireccion(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1&accept-language=es`
+        );
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          if (coordsFuenteRef.current !== 'gps') {
+            coordsFuenteRef.current = 'geocode';
+            setForm((prev) => ({
+              ...prev,
+              ubicacion_lat: parseFloat(data[0].lat).toFixed(6),
+              ubicacion_lng: parseFloat(data[0].lon).toFixed(6),
+            }));
+          }
+          setGeocodeEstado('ok');
+        } else {
+          if (coordsFuenteRef.current === 'geocode') {
+            coordsFuenteRef.current = null;
+            setForm((prev) => ({ ...prev, ubicacion_lat: '', ubicacion_lng: '' }));
+          }
+          setGeocodeEstado('error');
+        }
+      } catch {
+        setGeocodeEstado('error');
+      } finally {
+        setGeocodandoDireccion(false);
+      }
+    }, 900);
+
+    return () => {
+      if (geocodeDireccionRef.current) clearTimeout(geocodeDireccionRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.direccion_texto, direccionModificada]);
+
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    if (name === 'direccion_texto') {
+      setDireccionModificada(true);
+      setGeocodeEstado('idle');
+      setForm((prev) => ({
+        ...prev,
+        direccion_texto: value,
+        ...(coordsFuenteRef.current !== 'gps' ? { ubicacion_lat: '', ubicacion_lng: '' } : {}),
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handlePublicar = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (erroresPublicacion.length > 0) {
+      setErrorPublicar('Corrige los datos del formulario antes de publicar.');
+      return;
+    }
+
     setPublicando(true);
     setErrorPublicar(null);
 
@@ -250,6 +384,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       setMostrarFormulario(false);
       setChambaEditandoId(null);
       setForm(FORM_INICIAL);
+      limpiarFotos();
       if (chambaEditandoId && data.chamba) {
         setChambasList((prev) => prev.map((item) => (item.id === data.chamba.id ? { ...item, ...data.chamba } : item)));
       }
@@ -267,6 +402,18 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     setChambaEditandoId(null);
     setForm(FORM_INICIAL);
     setErrorPublicar(null);
+    setGeocodeEstado('idle');
+    setGeocodandoDireccion(false);
+    setDireccionModificada(false);
+    coordsFuenteRef.current = null;
+    limpiarFotos();
+  };
+
+  const handleSeleccionFotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).slice(0, 4);
+    fotosPreview.forEach((url) => URL.revokeObjectURL(url));
+    setFotosAdjuntas(files);
+    setFotosPreview(files.map((file) => URL.createObjectURL(file)));
   };
 
   const formatDateTimeLocalValue = (rawValue?: string) => {
@@ -291,6 +438,14 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       ubicacion_lat: chamba.ubicacion_lat != null ? String(chamba.ubicacion_lat) : '',
       ubicacion_lng: chamba.ubicacion_lng != null ? String(chamba.ubicacion_lng) : '',
     });
+    if (chamba.ubicacion_lat != null && chamba.ubicacion_lng != null) {
+      coordsFuenteRef.current = 'gps';
+      setGeocodeEstado('ok');
+    } else {
+      coordsFuenteRef.current = null;
+      setGeocodeEstado('idle');
+    }
+    setDireccionModificada(false);
     setMostrarFormulario(true);
   };
 
@@ -301,6 +456,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     }
     setMostrarMisChambas(true);
     setCargandoMisChambas(true);
+
     try {
       const res = await fetch(`/api/chambas/mis-chambas?userId=${userId}`);
       const data = await res.json();
@@ -333,6 +489,8 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     setCargandoGPS(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        coordsFuenteRef.current = 'gps';
+        setGeocodeEstado('ok');
         setForm((prev) => ({
           ...prev,
           ubicacion_lat: pos.coords.latitude.toFixed(6),
@@ -987,6 +1145,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   value={form.titulo}
                   onChange={handleFormChange}
                   required
+                  minLength={8}
                   maxLength={255}
                   placeholder="Ej: Pintor de departamento, Gasfíter urgente…"
                   className="rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
@@ -1001,6 +1160,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   value={form.descripcion}
                   onChange={handleFormChange}
                   required
+                  minLength={15}
                   rows={3}
                   placeholder="Detalla el trabajo a realizar…"
                   className="resize-none rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
@@ -1017,7 +1177,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     value={form.pago_clp}
                     onChange={handleFormChange}
                     required
-                    min={1}
+                    min={1000}
                     placeholder="15000"
                     className="rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
                   />
@@ -1037,22 +1197,43 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
               {/* Dirección */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Dirección</label>
-                <input
-                  type="text"
-                  name="direccion_texto"
-                  value={form.direccion_texto}
-                  onChange={handleFormChange}
-                  maxLength={255}
-                  placeholder="Ej: Av. Providencia 1234, Santiago"
-                  className="rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
-                />
+                <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Dirección *</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="direccion_texto"
+                    value={form.direccion_texto}
+                    onChange={handleFormChange}
+                    required
+                    maxLength={255}
+                    placeholder="Ej: Av. Providencia 1234, Santiago"
+                    className={`w-full rounded-lg border px-3 py-2 pr-8 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300/50 ${
+                      geocodeEstado === 'error' && form.direccion_texto.trim()
+                        ? 'border-red-400 bg-red-50'
+                        : geocodeEstado === 'ok' && form.direccion_texto.trim()
+                        ? 'border-green-400 bg-green-50/40'
+                        : 'border-[#c9ba6a] bg-white/70'
+                    }`}
+                  />
+                  {geocodandoDireccion && (
+                    <span className="absolute right-2.5 top-2 text-sm animate-pulse">🔍</span>
+                  )}
+                </div>
+                {geocodandoDireccion && (
+                  <p className="text-[11px] font-semibold text-blue-600">Verificando dirección en el mapa…</p>
+                )}
+                {!geocodandoDireccion && geocodeEstado === 'ok' && form.direccion_texto.trim() && (
+                  <p className="text-[11px] font-semibold text-green-700">✓ Dirección encontrada en el mapa</p>
+                )}
+                {!geocodandoDireccion && geocodeEstado === 'error' && form.direccion_texto.trim() && (
+                  <p className="text-[11px] font-semibold text-red-600">✗ No se encontró esta dirección en el mapa</p>
+                )}
               </div>
 
               {/* Coordenadas GPS */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Coordenadas GPS</label>
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Precisión GPS (opcional)</label>
                   <button
                     type="button"
                     onClick={handleUsarGPS}
@@ -1067,28 +1248,42 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     {cargandoGPS ? 'Obteniendo…' : 'Usar GPS'}
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="number"
-                    name="ubicacion_lat"
-                    value={form.ubicacion_lat}
-                    onChange={handleFormChange}
-                    step="any"
-                    placeholder="Latitud: -33.4489"
-                    className="rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
-                  />
-                  <input
-                    type="number"
-                    name="ubicacion_lng"
-                    value={form.ubicacion_lng}
-                    onChange={handleFormChange}
-                    step="any"
-                    placeholder="Longitud: -70.6693"
-                    className="rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
-                  />
+                <div className="rounded-lg border border-[#c9ba6a] bg-gray-900 px-3 py-2.5 font-mono text-xs min-h-[38px] flex items-center">
+                  {form.ubicacion_lat && form.ubicacion_lng ? (
+                    <span className="text-green-400">📍 {form.ubicacion_lat}, {form.ubicacion_lng}</span>
+                  ) : (
+                    <span className="text-gray-500">Sin coordenadas — escribe una dirección válida o usa el GPS</span>
+                  )}
                 </div>
-                {form.ubicacion_lat && form.ubicacion_lng && (
-                  <p className="text-[11px] font-semibold text-green-700">✓ Geolocalización capturada correctamente.</p>
+                {form.ubicacion_lat && form.ubicacion_lng && coordsFuenteRef.current === 'gps' && (
+                  <p className="text-[11px] font-semibold text-green-700">✓ Geolocalización GPS capturada.</p>
+                )}
+              </div>
+
+              {/* Fotos opcionales */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wide text-gray-700">Fotos del lugar o chamba (opcional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleSeleccionFotos}
+                  className="rounded-lg border border-[#c9ba6a] bg-white/70 px-3 py-2 text-xs text-gray-800 file:mr-3 file:rounded-full file:border-0 file:bg-blue-100 file:px-3 file:py-1.5 file:font-bold file:text-blue-700 hover:file:bg-blue-200"
+                />
+                {fotosAdjuntas.length > 0 && (
+                  <p className="text-[11px] font-semibold text-blue-700">{fotosAdjuntas.length} foto(s) seleccionada(s). Máximo 4.</p>
+                )}
+                {fotosPreview.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {fotosPreview.map((src, index) => (
+                      <img
+                        key={`${src}-${index}`}
+                        src={src}
+                        alt={`Vista previa foto ${index + 1}`}
+                        className="h-16 w-full rounded-lg border border-[#c9ba6a] object-cover"
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -1097,6 +1292,14 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 <p className="rounded-lg bg-red-100 px-3 py-2 text-xs font-bold text-red-700">
                   ⚠️ {errorPublicar}
                 </p>
+              )}
+
+              {erroresPublicacion.length > 0 && (
+                <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
+                  {erroresPublicacion.map((detalle) => (
+                    <p key={detalle}>• {detalle}</p>
+                  ))}
+                </div>
               )}
 
               {/* Acciones */}
@@ -1110,9 +1313,9 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 </button>
                 <button
                   type="submit"
-                  disabled={publicando}
+                  disabled={publicando || erroresPublicacion.length > 0}
                   className={`liftable flex-1 rounded-full px-5 py-2 text-sm font-bold text-white ${
-                    publicando
+                    publicando || erroresPublicacion.length > 0
                       ? 'cursor-not-allowed bg-gray-400'
                       : 'bg-blue-500 hover:bg-blue-600'
                   }`}
@@ -1356,7 +1559,12 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           )
         ) : (
           <div className="mx-auto w-full max-w-5xl">
-            <MapPanel />
+            <MapPanel
+              onSelectChamba={(id) => {
+                setVista('listado');
+                handleAbrirDetalle(id);
+              }}
+            />
           </div>
         )}
       </div>

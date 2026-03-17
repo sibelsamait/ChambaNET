@@ -1,6 +1,76 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase'; // Asegúrate de que sube 3 niveles hasta la carpeta lib
 
+type ChambaPayload = {
+  titulo?: string;
+  descripcion?: string;
+  pago_clp?: number;
+  horario?: string;
+  ubicacion_lat?: number;
+  ubicacion_lng?: number;
+  direccion_texto?: string;
+};
+
+async function direccionExisteEnMapa(direccion: string): Promise<boolean> {
+  const q = direccion.trim();
+  if (!q) return false;
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=es`
+    );
+    if (!response.ok) return false;
+    const data = await response.json();
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function validarPayloadChamba(payload: ChambaPayload): Promise<string | null> {
+  const titulo = payload.titulo?.trim() || '';
+  const descripcion = payload.descripcion?.trim() || '';
+  const direccion = payload.direccion_texto?.trim() || '';
+  const pago = Number(payload.pago_clp);
+  const tieneCoords = Number.isFinite(payload.ubicacion_lat) && Number.isFinite(payload.ubicacion_lng);
+
+  if (titulo.length < 8) {
+    return 'El título debe tener al menos 8 caracteres.';
+  }
+
+  if (descripcion.length < 15) {
+    return 'La descripción debe tener al menos 15 caracteres.';
+  }
+
+  if (!Number.isFinite(pago) || pago < 1000) {
+    return 'El pago mínimo permitido es CLP$ 1.000.';
+  }
+
+  if (!payload.horario) {
+    return 'La fecha y hora son obligatorias.';
+  }
+
+  const fecha = new Date(payload.horario);
+  if (Number.isNaN(fecha.getTime()) || fecha <= new Date()) {
+    return 'La fecha y hora deben ser futuras.';
+  }
+
+  if (!direccion) {
+    return 'La dirección es obligatoria.';
+  }
+
+  if (!tieneCoords) {
+    return 'Debes enviar coordenadas válidas para la ubicación.';
+  }
+
+  const existeDireccion = await direccionExisteEnMapa(direccion);
+  if (!existeDireccion) {
+    return 'La dirección ingresada no existe en el mapa.';
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Recibir los datos de Postman
@@ -13,6 +83,20 @@ export async function POST(request: Request) {
     // Validación básica de que no envíen datos vacíos
     if (!empleador_id || !titulo || !pago_clp) {
       return NextResponse.json({ error: 'Faltan datos obligatorios (empleador, título o pago).' }, { status: 400 });
+    }
+
+    const validationError = await validarPayloadChamba({
+      titulo,
+      descripcion,
+      pago_clp,
+      horario,
+      ubicacion_lat,
+      ubicacion_lng,
+      direccion_texto,
+    });
+
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
     // 2. REGLA DE NEGOCIO: Contar cuántas chambas ACTIVAS tiene este usuario
@@ -116,6 +200,20 @@ export async function PATCH(request: Request) {
 
     if (!chamba_id || !empleador_id || !titulo || !pago_clp) {
       return NextResponse.json({ error: 'Faltan datos obligatorios para editar la chamba.' }, { status: 400 });
+    }
+
+    const validationError = await validarPayloadChamba({
+      titulo,
+      descripcion,
+      pago_clp,
+      horario,
+      ubicacion_lat,
+      ubicacion_lng,
+      direccion_texto,
+    });
+
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
     const { data: chamba, error: checkError } = await supabase

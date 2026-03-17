@@ -23,7 +23,7 @@ const MapCanvas = dynamic(() => import('./MapCanvas'), {
   ),
 });
 
-export default function MapPanel() {
+export default function MapPanel({ onSelectChamba }: { onSelectChamba?: (id: string) => void }) {
   const REFRESH_INTERVAL_MS = 30 * 1000;
   const [jobs, setJobs] = useState<GeoChamba[]>([]);
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -278,7 +278,7 @@ export default function MapPanel() {
         {errorMsg ? <p className="text-red-600">{errorMsg}</p> : null}
       </div>
       <div className="h-[62vh] min-h-[330px]">
-        <MapCanvas jobs={jobs} userPosition={userPosition} onBoundsChange={handleBoundsChange} />
+        <MapCanvas jobs={jobs} userPosition={userPosition} onBoundsChange={handleBoundsChange} onSelectChamba={onSelectChamba} />
       </div>
     </section>
   );
