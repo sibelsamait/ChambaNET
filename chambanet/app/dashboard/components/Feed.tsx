@@ -712,7 +712,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   </p>
 
                   <div className="mb-4 space-y-1.5 text-sm font-bold text-gray-900">
-                    <p>💸 CLP$ {modalChambaData.chamba.pago_clp.toLocaleString('es-CL')}</p>
+                    <p>💰 CLP$ {modalChambaData.chamba.pago_clp.toLocaleString('es-CL')}</p>
                     {(() => {
                       const { date, time } = formatDateAndTime(modalChambaData.chamba.horario);
                       return <p>🕒 {date}&nbsp;&nbsp;{time}</p>;
@@ -838,7 +838,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                                       ocupado ? 'cursor-not-allowed bg-gray-400' : 'bg-green-500 hover:bg-green-600'
                                     }`}
                                   >
-                                    {ocupado ? '…' : '✅ Aprobar'}
+                                    {ocupado ? '…' : '✅ Aceptar'}
                                   </button>
                                   <button
                                     type="button"
@@ -1088,7 +1088,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   />
                 </div>
                 {form.ubicacion_lat && form.ubicacion_lng && (
-                  <p className="text-[11px] font-semibold text-green-700">✅ Coordenadas capturadas correctamente</p>
+                  <p className="text-[11px] font-semibold text-green-700">✓ Geolocalización capturada correctamente.</p>
                 )}
               </div>
 
@@ -1321,7 +1321,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                         <p className="text-xs leading-snug text-gray-800 sm:text-sm">{chamba.descripcion || 'Sin descripción disponible.'}</p>
 
                         <div className="space-y-1 text-xs font-bold text-gray-900 sm:text-sm">
-                          <p>💸 CLP$ {chamba.pago_clp.toLocaleString('es-CL')}</p>
+                          <p>💰 CLP$ {chamba.pago_clp.toLocaleString('es-CL')}</p>
                           <p>🕒 {horario.date} | {horario.time}</p>
                           <p>📍 {
                             chamba.direccion_texto ||

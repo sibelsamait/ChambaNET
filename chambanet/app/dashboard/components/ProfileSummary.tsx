@@ -46,6 +46,7 @@ export default function ProfileSummary({
   const [isUploading, setIsUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -117,6 +118,7 @@ export default function ProfileSummary({
       setSavedImageUrl(currentImageUrl);
       setSelectedFile(null);
       setSuccessMsg('Foto de perfil actualizada.');
+      setIsPhotoMenuOpen(false);
       router.refresh();
     } catch (error: unknown) {
       setCurrentImageUrl(savedImageUrl);
@@ -132,42 +134,53 @@ export default function ProfileSummary({
     <>
       <div className="border-b border-blue-200 p-4">
         <div className="flex items-center gap-4">
-        <Avatar
-          imageUrl={currentImageUrl}
-          name={fullName}
-          alt="Foto de perfil"
-          className="h-12 w-12 flex-shrink-0 rounded-full border-2 border-blue-200 object-cover"
-          fallbackClassName="text-sm"
-        />
-        <div>
-          <h2 className="text-base font-extrabold text-black sm:text-lg">{fullName || 'Usuario'}</h2>
-          <p className="flex items-center gap-1 text-xs font-bold text-gray-900 sm:text-sm">☆ {ratingText}</p>
-        </div>
-        </div>
-      </div>
-      <div className="border-b border-blue-200 px-4 py-3">
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="file"
-            name="image"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={handleFileChange}
-            className="block w-full text-xs text-gray-600 file:mr-2 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:font-semibold file:text-blue-800"
+          <Avatar
+            imageUrl={currentImageUrl}
+            name={fullName}
+            alt="Foto de perfil"
+            className="h-12 w-12 flex-shrink-0 rounded-full border-2 border-blue-200 object-cover"
+            fallbackClassName="text-sm"
           />
-          <p className="text-[11px] text-gray-500">
-            Selecciona una imagen desde tu dispositivo. Formatos: PNG, JPEG o WEBP. Máximo 2MB.
-          </p>
-          {errorMsg ? <p className="text-xs text-red-600">{errorMsg}</p> : null}
-          {successMsg ? <p className="text-xs text-green-600">{successMsg}</p> : null}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-extrabold text-black sm:text-lg">{fullName || 'Usuario'}</h2>
+            <p className="flex items-center gap-1 text-xs font-bold text-gray-900 sm:text-sm">☆ {ratingText}</p>
+          </div>
           <button
-            type="submit"
-            disabled={!selectedFile || isUploading}
-            className="liftable w-full rounded-xl bg-blue-500 p-3 text-center text-sm font-extrabold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+            type="button"
+            onClick={() => setIsPhotoMenuOpen((prev) => !prev)}
+            className="liftable rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-extrabold text-blue-700 transition hover:bg-blue-50"
+            aria-expanded={isPhotoMenuOpen}
+            aria-controls="photo-menu"
           >
-            {isUploading ? 'Actualizando...' : 'Actualizar foto'}
+            {isPhotoMenuOpen ? 'Ocultar' : 'Foto'}
           </button>
-        </form>
+        </div>
       </div>
+      {isPhotoMenuOpen && (
+        <div id="photo-menu" className="border-b border-blue-200 px-4 py-3">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="file"
+              name="image"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleFileChange}
+              className="block w-full text-xs text-gray-600 file:mr-2 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:font-semibold file:text-blue-800"
+            />
+            <p className="text-[11px] text-gray-500">
+              Selecciona una imagen desde tu dispositivo. Formatos: PNG, JPEG o WEBP. Máximo 2MB.
+            </p>
+            {errorMsg ? <p className="text-xs text-red-600">{errorMsg}</p> : null}
+            {successMsg ? <p className="text-xs text-green-600">{successMsg}</p> : null}
+            <button
+              type="submit"
+              disabled={!selectedFile || isUploading}
+              className="liftable w-full rounded-xl bg-blue-500 p-3 text-center text-sm font-extrabold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+            >
+              {isUploading ? 'Actualizando...' : 'Actualizar foto'}
+            </button>
+          </form>
+        </div>
+      )}
     </>
   );
 }
