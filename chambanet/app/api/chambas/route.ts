@@ -98,3 +98,47 @@ export async function GET() {
     return NextResponse.json({ error: 'Error interno del servidor al listar chambas.' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { chamba_id, empleador_id } = body;
+
+    if (!chamba_id || !empleador_id) {
+      return NextResponse.json({ error: 'Faltan datos obligatorios para eliminar la chamba.' }, { status: 400 });
+    }
+
+    // Seguridad: solo el dueño puede borrar su publicación
+    const { data: chamba, error: checkError } = await supabase
+      .from('chambas')
+      .select('id, empleador_id')
+      .eq('id', chamba_id)
+      .maybeSingle();
+
+    if (checkError) {
+      return NextResponse.json({ error: 'No se pudo validar la propiedad de la chamba.' }, { status: 500 });
+    }
+
+    if (!chamba) {
+      return NextResponse.json({ error: 'La chamba no existe o ya fue eliminada.' }, { status: 404 });
+    }
+
+    if (chamba.empleador_id !== empleador_id) {
+      return NextResponse.json({ error: 'No tienes permisos para eliminar esta publicación.' }, { status: 403 });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('chambas')
+      .delete()
+      .eq('id', chamba_id)
+      .eq('empleador_id', empleador_id);
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ mensaje: 'Chamba eliminada exitosamente.' }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Error interno del servidor al eliminar la chamba.' }, { status: 500 });
+  }
+}

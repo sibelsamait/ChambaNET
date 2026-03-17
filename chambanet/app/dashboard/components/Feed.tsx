@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Avatar from './Avatar';
 
@@ -51,19 +52,54 @@ const FORM_INICIAL: FormChamba = {
   ubicacion_lng: '',
 };
 
+interface MiChambaItem {
+  id: string;
+  titulo: string;
+  pago_clp: number;
+  estado: string;
+  rol: 'empleador' | 'postulante';
+}
+
 export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: string }) {
+  const router = useRouter();
   const [vista, setVista] = useState<'listado' | 'mapa'>('listado');
   const [postulandoId, setPostulandoId] = useState<string | null>(null);
+  const [chambasList, setChambasList] = useState<Chamba[]>(chambas);
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [form, setForm] = useState<FormChamba>(FORM_INICIAL);
   const [publicando, setPublicando] = useState(false);
   const [errorPublicar, setErrorPublicar] = useState<string | null>(null);
   const [cargandoGPS, setCargandoGPS] = useState(false);
   const [localidades, setLocalidades] = useState<Map<string, string>>(new Map());
+  const [misChambas, setMisChambas] = useState<MiChambaItem[]>([]);
+  const [mostrarMisChambas, setMostrarMisChambas] = useState(false);
+  const [cargandoMisChambas, setCargandoMisChambas] = useState(false);
+  const [destacadoId, setDestacadoId] = useState<string | null>(null);
+  const [chambaDetalle, setChambaDetalle] = useState<MiChambaItem | null>(null);
+
+  const articulosRef = useRef<Map<string, HTMLElement>>(new Map());
+  const misChembasDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setChambasList(chambas);
+  }, [chambas]);
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    if (!mostrarMisChambas) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (misChembasDropdownRef.current && !misChembasDropdownRef.current.contains(e.target as Node)) {
+        setMostrarMisChambas(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [mostrarMisChambas]);
 
   // Reverse geocoding para chambas con coords pero sin dirección texto
   useEffect(() => {
-    const sinDireccion = chambas.filter(
+    const sinDireccion = chambasList.filter(
       (c) => !c.direccion_texto && c.ubicacion_lat && c.ubicacion_lng
     );
     if (sinDireccion.length === 0) return;
@@ -100,7 +136,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     resolverSecuencial();
     return () => { cancelado = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chambas]);
+  }, [chambasList]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -150,6 +186,37 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     setForm(FORM_INICIAL);
     setErrorPublicar(null);
   };
+
+  const handleVerMisChambas = useCallback(async () => {
+    if (mostrarMisChambas) {
+      setMostrarMisChambas(false);
+      return;
+    }
+    setMostrarMisChambas(true);
+    setCargandoMisChambas(true);
+    try {
+      const res = await fetch(`/api/chambas/mis-chambas?userId=${userId}`);
+      const data = await res.json();
+      setMisChambas(data.chambas || []);
+    } catch {
+      setMisChambas([]);
+    } finally {
+      setCargandoMisChambas(false);
+    }
+  }, [mostrarMisChambas, userId]);
+
+  const handleClickMiChamba = useCallback((item: MiChambaItem) => {
+    setMostrarMisChambas(false);
+    const el = articulosRef.current.get(item.id);
+    if (el) {
+      setVista('listado');
+      setDestacadoId(item.id);
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+      setTimeout(() => setDestacadoId(null), 2500);
+    } else {
+      setChambaDetalle(item);
+    }
+  }, []);
 
   const handleUsarGPS = () => {
     if (!navigator.geolocation) {
@@ -226,8 +293,68 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     }
   };
 
+  const handleEliminarChamba = async (chambaId: string) => {
+    const confirmar = window.confirm('¿Seguro que quieres eliminar esta chamba? Esta acción no se puede deshacer.');
+    if (!confirmar) return;
+
+    setEliminandoId(chambaId);
+
+    try {
+      const response = await fetch('/api/chambas', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chamba_id: chambaId, empleador_id: userId }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'No se pudo eliminar la chamba.');
+      }
+
+      setChambasList((prev) => prev.filter((item) => item.id !== chambaId));
+      router.refresh();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido al eliminar.';
+      alert(message);
+    } finally {
+      setEliminandoId(null);
+    }
+  };
+
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-blue-500/95 text-white">
+      {/* Modal detalle chamba (chambas no visibles en el feed) */}
+      {chambaDetalle && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => setChambaDetalle(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-6 shadow-[0_12px_40px_rgba(58,82,123,0.30)] text-gray-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between border-b-2 border-dashed border-[#d6c989] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{chambaDetalle.rol === 'empleador' ? '📌' : '🤝'}</span>
+                <h2 className="text-lg font-extrabold text-black leading-tight">{chambaDetalle.titulo}</h2>
+              </div>
+              <button
+                onClick={() => setChambaDetalle(null)}
+                className="rounded-full p-1 text-gray-400 hover:bg-white/60 hover:text-gray-700"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-2 text-sm font-semibold text-gray-800">
+              <p>💸 CLP$ {chambaDetalle.pago_clp.toLocaleString('es-CL')}</p>
+              <p>Estado: <span className="rounded-full bg-white/65 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-blue-800">{chambaDetalle.estado.replace(/_/g, ' ')}</span></p>
+              <p>Rol: <span className="font-bold text-blue-700">{chambaDetalle.rol === 'empleador' ? 'Mi publicación' : 'Postulado como trabajador'}</span></p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal publicar chamba */}
       {mostrarFormulario && (
         <div
@@ -414,29 +541,104 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           </button>
           </div>
 
-          <button
-            onClick={() => setMostrarFormulario(true)}
-            className="liftable flex items-center gap-1.5 rounded-full bg-[#f0e3aa] px-4 py-1.5 text-sm font-extrabold text-gray-900 shadow-md hover:bg-[#ecdfa0] sm:px-5"
-          >
-            <span className="text-base">📌</span>
-            <span className="hidden sm:inline">Publicar chamba</span>
-            <span className="sm:hidden">Publicar</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Ver mis chambas */}
+            <div ref={misChembasDropdownRef} className="relative">
+              <button
+                onClick={handleVerMisChambas}
+                className="liftable flex items-center gap-1.5 rounded-full border border-white/40 bg-white/20 px-3 py-1.5 text-sm font-extrabold text-white hover:bg-white/30 sm:px-4"
+              >
+                <span className="text-base">📋</span>
+                <span className="hidden sm:inline">Mis chambas</span>
+                <span className="sm:hidden">Mías</span>
+              </button>
+
+              {mostrarMisChambas && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-40 min-w-[270px] overflow-hidden rounded-xl border border-blue-100 bg-white shadow-[0_8px_32px_rgba(30,64,175,0.22)]">
+                  <div className="border-b border-gray-100 px-4 py-2.5">
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-700">Mis chambas activas</p>
+                  </div>
+
+                  {cargandoMisChambas ? (
+                    <p className="px-4 py-4 text-xs text-gray-400">Cargando…</p>
+                  ) : misChambas.length === 0 ? (
+                    <p className="px-4 py-4 text-xs text-gray-500">No tienes chambas activas.</p>
+                  ) : (
+                    <ul className="max-h-72 overflow-y-auto">
+                      {misChambas.map((item) => (
+                        <li key={item.id} className="border-b border-gray-50 last:border-0">
+                          <button
+                            type="button"
+                            onClick={() => handleClickMiChamba(item)}
+                            className="flex w-full items-start gap-3 px-4 py-2.5 text-left transition hover:bg-blue-50 active:bg-blue-100"
+                          >
+                            <span className="mt-0.5 text-sm shrink-0">{item.rol === 'empleador' ? '📌' : '🤝'}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-bold text-gray-800">{item.titulo}</p>
+                              <p className="text-[11px] text-gray-500">
+                                CLP$ {item.pago_clp.toLocaleString('es-CL')}
+                                <span className="mx-1">·</span>
+                                <span className="uppercase">{item.estado.replace(/_/g, ' ')}</span>
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Publicar chamba */}
+            <button
+              onClick={() => setMostrarFormulario(true)}
+              className="liftable flex items-center gap-1.5 rounded-full bg-[#f0e3aa] px-4 py-1.5 text-sm font-extrabold text-gray-900 shadow-md hover:bg-[#ecdfa0] sm:px-5"
+            >
+              <span className="text-base">📌</span>
+              <span className="hidden sm:inline">Publicar chamba</span>
+              <span className="sm:hidden">Publicar</span>
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="feed-scroll flex-1 overflow-y-auto px-3 py-3 sm:px-4 lg:px-6 lg:py-5">
         {vista === 'listado' ? (
-          chambas.length > 0 ? (
+          chambasList.length > 0 ? (
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-3.5">
-              {chambas.map((chamba) => {
+              {chambasList.map((chamba) => {
                 const horario = formatDateAndTime((chamba as Chamba & { horario?: string }).horario);
 
                 return (
                   <article
                     key={chamba.id}
-                    className="liftable rounded-xl border border-[#d7cc83] bg-[#f0e3aa] px-3.5 py-3.5 text-gray-900 shadow-[0_8px_18px_rgba(58,82,123,0.18)] sm:px-4"
+                    ref={(el) => {
+                      if (el) articulosRef.current.set(chamba.id, el);
+                      else articulosRef.current.delete(chamba.id);
+                    }}
+                    className={`liftable relative rounded-xl border px-3.5 py-3.5 text-gray-900 shadow-[0_8px_18px_rgba(58,82,123,0.18)] sm:px-4 transition-all duration-300 ${
+                      destacadoId === chamba.id
+                        ? 'border-blue-500 bg-[#f0e3aa] ring-2 ring-blue-400 ring-offset-2'
+                        : 'border-[#d7cc83] bg-[#f0e3aa]'
+                    }`}
                   >
+                    {chamba.empleador_id === userId && (
+                      <button
+                        type="button"
+                        onClick={() => handleEliminarChamba(chamba.id)}
+                        disabled={eliminandoId === chamba.id}
+                        aria-label="Eliminar publicación"
+                        title="Eliminar publicación"
+                        className={`absolute right-2 top-2 rounded-full border border-red-200 bg-white/80 px-2 py-1 text-xs transition ${
+                          eliminandoId === chamba.id
+                            ? 'cursor-not-allowed text-gray-400'
+                            : 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                        }`}
+                      >
+                        {eliminandoId === chamba.id ? '...' : '🗑'}
+                      </button>
+                    )}
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                       <div className="flex min-w-[100px] items-center gap-2 border-b border-dashed border-[#d6c989] pb-2.5 sm:mr-3 sm:min-h-[100px] sm:w-[118px] sm:flex-col sm:justify-center sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
                         <Avatar
