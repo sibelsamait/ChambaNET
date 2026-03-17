@@ -1,4 +1,5 @@
 import BrandLogo from '@/app/components/BrandLogo';
+import Link from 'next/link';
 
 interface SidebarProps {
   nombres?: string | null;
@@ -29,7 +30,7 @@ export default function Sidebar({ nombres, apellidoPaterno, estrellas, imagenUrl
         initialImageUrl={imagenUrl}
       />
       <nav className="space-y-1.5 p-3 text-sm font-medium text-gray-800 lg:flex-1 lg:overflow-y-auto">
-        <button className="liftable w-full rounded-xl p-2.5 text-left underline decoration-1 underline-offset-4 hover:bg-blue-100">Editar información</button>
+        <Link href="/dashboard/perfil" className="liftable block w-full rounded-xl p-2.5 text-left underline decoration-1 underline-offset-4 hover:bg-blue-100">Mi perfil</Link>
         <button className="liftable w-full rounded-xl p-2.5 text-left underline decoration-1 underline-offset-4 hover:bg-blue-100">Postulaciones</button>
         <button className="liftable w-full rounded-xl bg-white/90 p-2.5 text-left underline decoration-1 underline-offset-4 shadow-[0_8px_14px_rgba(36,72,117,0.18)] hover:bg-blue-100">Historial de publicaciones</button>
         <button className="liftable w-full rounded-xl p-2.5 text-left underline decoration-1 underline-offset-4 hover:bg-blue-100">Historial de trabajos</button>
