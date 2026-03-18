@@ -54,6 +54,23 @@ export default function ActiveProfileView({
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const profileFields = [
+    { label: 'Fecha de nacimiento', value: 'Aún no registrada' },
+    { label: 'Miembro desde', value: 'Aún no registrado' },
+    { label: 'Correo electrónico', value: 'Aún no registrado' },
+    { label: 'Teléfono', value: 'Aún no registrado' },
+    { label: 'Calle', value: 'Aún no registrada' },
+    { label: 'Número', value: 'Aún no registrado' },
+    { label: 'Comuna', value: 'Aún no registrada' },
+    { label: 'Región', value: 'Aún no registrada' },
+  ];
+  const reviewCards = [
+    { quote: 'Excelente paga', author: 'Paulo I.' },
+    { quote: 'Buena colación', author: 'Barto J.' },
+    { quote: 'Trato flexible', author: 'Augusta P.' },
+    { quote: 'Puntual y claro', author: 'Claudio M.' },
+    { quote: 'Buen ambiente', author: 'Marta R.' },
+  ];
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -254,63 +271,102 @@ export default function ActiveProfileView({
         </div>
       )}
 
-      <section className="mx-auto w-full max-w-3xl p-4 sm:p-6 lg:p-8">
-        <div className="overflow-hidden rounded-[28px] border border-blue-200 bg-[#f2f2f2] shadow-[0_18px_44px_rgba(36,72,117,0.18)]">
-          <div className="bg-[#559ff6] px-5 py-5 text-black sm:px-8">
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-black/70">Mi perfil</p>
-            <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">Perfil del usuario activo</h1>
-            <p className="mt-2 text-sm font-semibold text-black/75">
-              Aquí puedes revisar tu información pública y actualizar tu foto de perfil.
-            </p>
+      <section className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+        <div className="overflow-hidden rounded-[24px] border border-blue-200 bg-[#559ff6] shadow-[0_18px_44px_rgba(36,72,117,0.18)]">
+          <div className="px-5 pt-5 sm:px-8 sm:pt-7">
+            <div className="mb-4 flex items-center gap-3 text-white">
+              <span className="text-2xl leading-none" aria-hidden="true">
+                ←
+              </span>
+              <h1 className="text-3xl font-extrabold tracking-tight sm:text-[2.15rem]">Mi perfil</h1>
+            </div>
+
+            <div className="rounded-2xl bg-[#5ca5f7] px-4 py-4 sm:px-6 sm:py-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
+                  <div className="relative shrink-0">
+                    <Avatar
+                      imageUrl={currentImageUrl}
+                      name={fullName}
+                      alt="Foto del perfil activo"
+                      className="h-24 w-24 rounded-full border-4 border-blue-200 object-cover sm:h-28 sm:w-28"
+                      fallbackClassName="text-2xl"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMsg(null);
+                        setSuccessMsg(null);
+                        setSelectedFile(null);
+                        setCurrentImageUrl(savedImageUrl);
+                        setIsImageModalOpen(true);
+                      }}
+                      className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#f0e3aa] text-xs shadow-md transition hover:bg-[#ecdfa0]"
+                      aria-label="Editar imagen de perfil"
+                      title="Editar imagen"
+                    >
+                      ✎
+                    </button>
+                  </div>
+
+                  <div className="min-w-0 text-white">
+                    {rut ? <p className="text-2xl font-extrabold leading-tight sm:text-3xl">{rut}</p> : null}
+                    <p className="mt-1 text-lg font-bold sm:text-2xl">{fullName || 'Usuario'}</p>
+                    <p className="text-base font-semibold text-white/90">Perfil activo</p>
+                    <p className="mt-3 text-xs font-semibold text-white/85 sm:text-sm">
+                      Toca el icono en la foto para actualizar tu imagen de perfil.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-fit rounded-2xl bg-[#f0e3aa] px-4 py-2 text-black shadow-sm">
+                  <p className="text-3xl font-extrabold leading-none sm:text-4xl">☆ {ratingText}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-x-6 gap-y-3 text-sm text-white sm:grid-cols-2 sm:text-base">
+                {profileFields.map((field) => (
+                  <p key={field.label}>
+                    <span className="font-semibold text-white/90">{field.label}:</span>{' '}
+                    <span className="font-medium">{field.value}</span>
+                  </p>
+                ))}
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex gap-3 text-xs font-bold sm:text-sm">
+                  <span className="rounded-full bg-white/20 px-3 py-1.5">Activas: {activePosts}</span>
+                  <span className="rounded-full bg-white/20 px-3 py-1.5">Completadas: {completedPosts}</span>
+                </div>
+                <button
+                  type="button"
+                  className="liftable rounded-full bg-[#f0e3aa] px-5 py-2 text-sm font-bold text-gray-900 transition hover:bg-[#ecdfa0]"
+                >
+                  Editar información
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="p-5 sm:p-8">
-            <div className="rounded-2xl border border-blue-100 bg-white/90 p-5 shadow-sm">
-              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
-                <div className="relative">
-                  <Avatar
-                    imageUrl={currentImageUrl}
-                    name={fullName}
-                    alt="Foto del perfil activo"
-                    className="h-24 w-24 rounded-full border-4 border-blue-200 object-cover"
-                    fallbackClassName="text-2xl"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMsg(null);
-                      setSuccessMsg(null);
-                      setSelectedFile(null);
-                      setCurrentImageUrl(savedImageUrl);
-                      setIsImageModalOpen(true);
-                    }}
-                    className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#f0e3aa] text-sm shadow-md transition hover:bg-[#ecdfa0]"
-                    aria-label="Editar imagen de perfil"
-                    title="Editar imagen"
-                  >
-                    ✏️
-                  </button>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-2xl font-extrabold text-black">{fullName || 'Usuario'}</h2>
-                  <p className="mt-1 text-sm font-bold text-gray-700">☆ {ratingText}</p>
-                  {rut ? <p className="mt-2 text-sm font-semibold text-gray-600">RUT: {rut}</p> : null}
-                  <p className="mt-3 text-xs font-semibold text-gray-500">
-                    Usa el botón ✏️ sobre tu foto para abrir el editor flotante.
-                  </p>
-                </div>
-              </div>
+          <div className="px-5 pb-5 pt-6 sm:px-8 sm:pb-7 sm:pt-8">
+            <h2 className="text-3xl font-extrabold text-white sm:text-[2.05rem]">Valoraciones</h2>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-700">Chambas activas</p>
-                  <p className="mt-2 text-3xl font-extrabold text-black">{activePosts}</p>
-                </div>
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-700">Trabajos completados</p>
-                  <p className="mt-2 text-3xl font-extrabold text-black">{completedPosts}</p>
-                </div>
-              </div>
+            <div className="mt-5 inline-flex rounded-2xl bg-[#f0e3aa] px-5 py-3 text-black">
+              <p className="text-4xl font-extrabold leading-none">☆ {ratingText}</p>
+            </div>
+
+            <div className="mt-6 flex gap-4 overflow-x-auto pb-4 [scrollbar-color:#76b0fb_transparent] [scrollbar-width:thin]">
+              {reviewCards.map((review, index) => (
+                <article
+                  key={`${review.author}-${index}`}
+                  className="shrink-0 rounded-3xl bg-[#76b0fb] px-4 py-5 text-center text-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.20)] w-[150px] sm:w-[168px]"
+                >
+                  <p className="text-4xl leading-none">🏅</p>
+                  <p className="mt-2 text-lg font-black">5</p>
+                  <p className="mt-2 text-sm font-semibold italic leading-snug">&ldquo;{review.quote}&rdquo;</p>
+                  <p className="mt-1 text-sm font-semibold">{review.author}</p>
+                </article>
+              ))}
             </div>
           </div>
         </div>
