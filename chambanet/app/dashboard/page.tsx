@@ -80,7 +80,7 @@ export default async function DashboardPage() {
         imagenUrl={imagenUsuario?.image_data_url}
       />
       <Feed chambas={chambas} userId={authData.user.id} />
-      <ChatPanel />
+      <ChatPanel userId={authData.user.id} />
     </div>
   );
 }
