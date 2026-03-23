@@ -618,6 +618,22 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     void cargarMisChambas();
   }, [searchParams, cargarMisChambas]);
 
+  const esChambaActivaDeUsuario = useCallback((item: MiChambaItem) => {
+    if (item.rol === 'empleador') {
+      return ['PUBLICADA', 'CON_POSTULANTES', 'EN_OBRA', 'ESPERANDO_APROBACION'].includes(item.estado);
+    }
+
+    if (item.estado_postulacion === 'ACEPTADA') {
+      return ['EN_OBRA', 'ESPERANDO_APROBACION'].includes(item.estado);
+    }
+
+    if (item.estado_postulacion === 'PENDIENTE') {
+      return ['PUBLICADA', 'CON_POSTULANTES'].includes(item.estado);
+    }
+
+    return false;
+  }, []);
+
   const misChambasFiltradas = useMemo(() => {
     if (filtroMisChambas === 'postulaciones') {
       return misChambas.filter((item) => item.rol === 'postulante');
@@ -627,8 +643,8 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       return misChambas.filter((item) => item.rol === 'empleador');
     }
 
-    return misChambas;
-  }, [misChambas, filtroMisChambas]);
+    return misChambas.filter(esChambaActivaDeUsuario);
+  }, [misChambas, filtroMisChambas, esChambaActivaDeUsuario]);
 
   const handleClickMiChamba = useCallback((item: MiChambaItem) => {
     setMostrarMisChambas(false);
@@ -2153,7 +2169,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                         ? 'Historial de publicaciones'
                         : filtroMisChambas === 'postulaciones'
                           ? 'Historial de trabajos'
-                          : 'Mi historial de chambas'}
+                          : 'Mis chambas activas'}
                     </p>
                   </div>
 
@@ -2165,7 +2181,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                         ? 'No tienes publicaciones históricas.'
                         : filtroMisChambas === 'postulaciones'
                           ? 'No tienes trabajos históricos.'
-                          : 'No tienes chambas en tu historial.'}
+                          : 'No tienes chambas activas o en curso.'}
                     </p>
                   ) : (
                     <ul className="max-h-72 overflow-y-auto">
@@ -2508,7 +2524,6 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           <section className="mx-auto w-full max-w-4xl rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_12px_40px_rgba(58,82,123,0.30)] sm:p-6">
             <div className="mb-4 flex items-center justify-between gap-3 border-b-2 border-dashed border-[#d6c989] pb-4">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Vista de sidebar</p>
                 <h2 className="text-2xl font-extrabold text-black">{historialSidebarTitulo}</h2>
               </div>
               <button

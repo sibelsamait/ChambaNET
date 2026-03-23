@@ -765,7 +765,6 @@ export default function ActiveProfileView({
                   <div className="min-w-0 text-white">
                     {rut ? <p className="text-2xl font-extrabold leading-tight sm:text-3xl">{rut}</p> : null}
                     <p className="mt-1 text-lg font-bold sm:text-2xl">{currentFullName || 'Usuario'}</p>
-                    <p className="text-base font-semibold text-white/90">Perfil activo</p>
                     <p className="mt-3 text-xs font-semibold text-white/85 sm:text-sm">
                       Toca el icono en la foto para actualizar tu imagen de perfil.
                     </p>
