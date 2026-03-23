@@ -11,7 +11,7 @@ export async function GET(_request: Request, context: RouteContext) {
     // Datos del usuario
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nombres, apellido_paterno, apellido_materno, rut')
+      .select('id, nombres, apellido_paterno, apellido_materno, rut, email, telefono, fecha_nacimiento, direccion_completa')
       .eq('id', userId)
       .maybeSingle();
 
@@ -78,6 +78,10 @@ export async function GET(_request: Request, context: RouteContext) {
       apellido_paterno: usuario.apellido_paterno,
       apellido_materno: usuario.apellido_materno ?? null,
       rut: usuario.rut ?? null,
+      email: usuario.email ?? null,
+      telefono: usuario.telefono ?? null,
+      fecha_nacimiento: usuario.fecha_nacimiento ?? null,
+      direccion_completa: usuario.direccion_completa ?? null,
       promedio_valoracion: ratingMap.get(userId) ?? null,
       imagen_url: imagenData?.image_data_url ?? null,
       trabajos_completados: trabajosCompletados,

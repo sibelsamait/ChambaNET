@@ -41,7 +41,7 @@ export async function GET(request: Request, context: RouteContext) {
     const { data: trabajadorActivoPerfil } = trabajadorActivoId
       ? await supabase
           .from('usuarios')
-          .select('id, nombres, apellido_paterno')
+          .select('id, nombres, apellido_paterno, apellido_materno, rut, email, telefono, fecha_nacimiento, direccion_completa')
           .eq('id', trabajadorActivoId)
           .maybeSingle()
       : { data: null };
@@ -134,7 +134,7 @@ export async function GET(request: Request, context: RouteContext) {
     // 4. Datos del empleador
     const { data: empleador } = await supabase
       .from('usuarios')
-      .select('id, nombres, apellido_paterno, apellido_materno, rut')
+      .select('id, nombres, apellido_paterno, apellido_materno, rut, email, telefono, fecha_nacimiento, direccion_completa')
       .eq('id', chamba.empleador_id)
       .maybeSingle();
 
@@ -201,6 +201,12 @@ export async function GET(request: Request, context: RouteContext) {
             id: trabajadorActivoPerfil.id,
             nombres: trabajadorActivoPerfil.nombres,
             apellido_paterno: trabajadorActivoPerfil.apellido_paterno,
+            apellido_materno: trabajadorActivoPerfil.apellido_materno ?? null,
+            rut: trabajadorActivoPerfil.rut ?? null,
+            email: trabajadorActivoPerfil.email ?? null,
+            telefono: trabajadorActivoPerfil.telefono ?? null,
+            fecha_nacimiento: trabajadorActivoPerfil.fecha_nacimiento ?? null,
+            direccion_completa: trabajadorActivoPerfil.direccion_completa ?? null,
           }
         : null,
       puede_solicitar_cierre: puedeSolicitarCierre,

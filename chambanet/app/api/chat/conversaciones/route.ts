@@ -14,10 +14,31 @@ type ConversacionDTO = {
   chambaTitulo: string;
   otroUsuarioId: string;
   otroUsuarioNombre: string;
+  otroUsuarioRut: string | null;
+  otroUsuarioEmail: string | null;
+  otroUsuarioTelefono: string | null;
+  otroUsuarioFechaNacimiento: string | null;
+  otroUsuarioDireccion: string | null;
   otroUsuarioImagenUrl: string | null;
   ultimoMensaje: string;
   ultimoMensajeEn: string | null;
 };
+
+function direccionComoTexto(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const direccion = raw as {
+    calle?: string;
+    numero?: string;
+    comuna_nombre?: string;
+    region_nombre?: string;
+  };
+
+  const partes = [direccion.calle, direccion.numero, direccion.comuna_nombre, direccion.region_nombre]
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+
+  return partes.length ? partes.join(', ') : null;
+}
 
 function normalizarChamba(raw: unknown): { id: string; titulo: string; empleador_id: string } | null {
   if (!raw) return null;
@@ -110,7 +131,7 @@ export async function GET() {
     const [{ data: usuarios }, { data: imagenes }, { data: mensajes, error: mensajesError }] = await Promise.all([
       supabase
         .from('usuarios')
-        .select('id, nombres, apellido_paterno')
+        .select('id, nombres, apellido_paterno, rut, email, telefono, fecha_nacimiento, direccion_completa')
         .in('id', otroUsuarioIds),
       supabase
         .from('user_imagenes')
@@ -155,7 +176,16 @@ export async function GET() {
 
     const conversaciones: ConversacionDTO[] = conexionesUnicas.map((conexion) => {
       const usuario = usuariosMap.get(conexion.otroUsuarioId) as
-        | { id: string; nombres: string; apellido_paterno: string }
+        | {
+            id: string;
+            nombres: string;
+            apellido_paterno: string;
+            rut?: string | null;
+            email?: string | null;
+            telefono?: string | null;
+            fecha_nacimiento?: string | null;
+            direccion_completa?: unknown;
+          }
         | undefined;
 
       const nombreCompleto = usuario
@@ -171,6 +201,11 @@ export async function GET() {
         chambaTitulo: conexion.chambaTitulo,
         otroUsuarioId: conexion.otroUsuarioId,
         otroUsuarioNombre: nombreCompleto,
+        otroUsuarioRut: usuario?.rut ?? null,
+        otroUsuarioEmail: usuario?.email ?? null,
+        otroUsuarioTelefono: usuario?.telefono ?? null,
+        otroUsuarioFechaNacimiento: usuario?.fecha_nacimiento ?? null,
+        otroUsuarioDireccion: direccionComoTexto(usuario?.direccion_completa),
         otroUsuarioImagenUrl: (imagenesMap.get(conexion.otroUsuarioId) as string | null) || null,
         ultimoMensaje: ultimo?.contenido || 'Sin mensajes aún',
         ultimoMensajeEn: ultimo?.creado_en || null,

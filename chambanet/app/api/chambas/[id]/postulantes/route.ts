@@ -45,7 +45,7 @@ export async function GET(request: Request, context: RouteContext) {
     // Perfiles de trabajadores
     const { data: trabajadores } = await supabase
       .from('usuarios')
-      .select('id, nombres, apellido_paterno, apellido_materno, rut')
+      .select('id, nombres, apellido_paterno, apellido_materno, rut, email, telefono, fecha_nacimiento, direccion_completa')
       .in('id', trabajadorIds);
 
     const ratingMap = await getAverageRatingsByUserIds(trabajadorIds as string[]);
@@ -70,6 +70,10 @@ export async function GET(request: Request, context: RouteContext) {
           apellido_paterno: t?.apellido_paterno ?? '',
           apellido_materno: t?.apellido_materno ?? null,
           rut: t?.rut ?? null,
+          email: t?.email ?? null,
+          telefono: t?.telefono ?? null,
+          fecha_nacimiento: t?.fecha_nacimiento ?? null,
+          direccion_completa: t?.direccion_completa ?? null,
           promedio_valoracion: ratingMap.get(p.trabajador_id) ?? null,
           imagen_url: imagenesMap.get(p.trabajador_id) ?? null,
         },
