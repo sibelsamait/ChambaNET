@@ -4,7 +4,28 @@ import { cookies } from 'next/headers';
 import { CrearPagoResponse, Pago } from '@/types/pagos';
 import { createMercadoPagoPreference, getMercadoPagoPublicKey } from '@/lib/mercadopago';
 
-const TARIFA_SERVICIO_PORCENTAJE = 0.06; // 6%
+const DEFAULT_IVA_PORCENTAJE = 19;
+const DEFAULT_MARGEN_SERVICIO_PORCENTAJE = 7;
+
+type ConfiguracionFinanciera = {
+  iva_porcentaje: number;
+  margen_servicio_porcentaje: number;
+  cuenta_destino_tipo: 'BANCARIA' | 'MERCADOPAGO';
+  cuenta_destino_alias: string;
+  cuenta_destino_numero_mascarado: string;
+  cuenta_destino_identificador_externo: string | null;
+};
+
+function getDefaultConfiguracionFinanciera(): ConfiguracionFinanciera {
+  return {
+    iva_porcentaje: DEFAULT_IVA_PORCENTAJE,
+    margen_servicio_porcentaje: DEFAULT_MARGEN_SERVICIO_PORCENTAJE,
+    cuenta_destino_tipo: 'BANCARIA',
+    cuenta_destino_alias: 'Cuenta impuestos (pendiente configurar)',
+    cuenta_destino_numero_mascarado: '****',
+    cuenta_destino_identificador_externo: null,
+  };
+}
 
 /**
  * POST /api/pagos
@@ -107,11 +128,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Calcular montos
-    const tarifaServicio = Math.round(monto_base * TARIFA_SERVICIO_PORCENTAJE * 100) / 100;
+    // 8. Obtener configuración financiera (IVA + margen de servicio)
+    const { data: configFinanciera } = await supabase
+      .from('configuracion_financiera_empresa')
+      .select(
+        'iva_porcentaje, margen_servicio_porcentaje, cuenta_destino_tipo, cuenta_destino_alias, cuenta_destino_numero_mascarado, cuenta_destino_identificador_externo'
+      )
+      .eq('activo', true)
+      .limit(1)
+      .maybeSingle();
+
+    const config = (configFinanciera ||
+      getDefaultConfiguracionFinanciera()) as ConfiguracionFinanciera;
+
+    const porcentajeTarifa =
+      (Number(config.iva_porcentaje || DEFAULT_IVA_PORCENTAJE) +
+        Number(config.margen_servicio_porcentaje || DEFAULT_MARGEN_SERVICIO_PORCENTAJE)) /
+      100;
+
+    // 9. Calcular montos
+    const tarifaServicio = Math.round(monto_base * porcentajeTarifa * 100) / 100;
     const montoTotal = monto_base + tarifaServicio;
 
-    // 9. Crear pago en la base de datos
+    // 10. Crear pago en la base de datos
     const { data: pago, error: pagoError } = await supabase
       .from('pagos')
       .insert({
@@ -135,7 +174,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // 10. Crear preferencia real en Mercado Pago (Checkout Pro, solo medios digitales)
+    // 11. Registrar reserva para impuestos/servicio
+    const { error: reservaError } = await supabase.from('movimientos_reserva_impuestos').insert({
+      pago_id: pago.id,
+      monto_reservado: tarifaServicio,
+      porcentaje_total_aplicado: Math.round(porcentajeTarifa * 10000) / 100,
+      cuenta_destino_tipo: config.cuenta_destino_tipo,
+      cuenta_destino_alias: config.cuenta_destino_alias,
+      cuenta_destino_numero_mascarado: config.cuenta_destino_numero_mascarado,
+      cuenta_destino_identificador_externo: config.cuenta_destino_identificador_externo,
+      estado: 'RESERVADO',
+    });
+
+    if (reservaError) {
+      console.error('Error al registrar reserva de impuestos:', reservaError.message);
+      await supabase.from('pagos').delete().eq('id', pago.id);
+      return NextResponse.json(
+        { error: 'No se pudo registrar la reserva de impuestos. Intenta nuevamente.' },
+        { status: 500 }
+      );
+    }
+
+    // 12. Crear preferencia real en Mercado Pago (Checkout Pro, solo medios digitales)
     const preference = await createMercadoPagoPreference({
       pagoId: pago.id,
       chambaId: chamba_id,
@@ -148,7 +208,7 @@ export async function POST(request: Request) {
       payerEmail: authData.user.email,
     });
 
-    // 11. Persistir ID de preferencia de Mercado Pago
+    // 13. Persistir ID de preferencia de Mercado Pago
     const { error: updatePagoError } = await supabase
       .from('pagos')
       .update({
@@ -164,7 +224,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 12. Respuesta para el frontend
+    // 14. Respuesta para el frontend
     const response: CrearPagoResponse = {
       pago: {
         ...(pago as Pago),
@@ -178,6 +238,7 @@ export async function POST(request: Request) {
         checkout_url: preference.checkoutUrl,
         sandbox_checkout_url: preference.sandboxCheckoutUrl,
         public_key: getMercadoPagoPublicKey(),
+        porcentaje_tarifa: Math.round(porcentajeTarifa * 10000) / 100,
       },
     };
 

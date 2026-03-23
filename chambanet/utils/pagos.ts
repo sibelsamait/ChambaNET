@@ -9,7 +9,10 @@ import { DesgloseMontos, EstadoPago, TipoTransaccion } from '@/types/pagos';
 // CONSTANTES
 // ============================================================================
 
-export const TARIFA_SERVICIO_PORCENTAJE = 0.06; // 6%
+export const IVA_PORCENTAJE = 0.19; // 19%
+export const MARGEN_SERVICIO_PORCENTAJE = 0.07; // 7%
+export const TARIFA_TOTAL_PORCENTAJE = IVA_PORCENTAJE + MARGEN_SERVICIO_PORCENTAJE; // 26%
+export const TARIFA_SERVICIO_PORCENTAJE = TARIFA_TOTAL_PORCENTAJE;
 export const COMPENSACION_CASO_A = 0.15; // 15%
 export const MIN_REEMBOLSO_CASO_B = 0.15; // 15%
 export const MAX_REEMBOLSO_CASO_B = 0.40; // 40%

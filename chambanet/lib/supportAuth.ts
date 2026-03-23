@@ -4,6 +4,20 @@ import { supabase } from './supabase';
 const SUPPORT_ADMIN_EMAILS = new Set(['soporte.chambanet@gmail.com']);
 const SUPPORT_ADMIN_RUTS = new Set(['00000000-0']);
 
+const COMPANY_OWNER_EMAILS = new Set(
+  String(process.env.COMPANY_OWNER_EMAILS || 'soporte.chambanet@gmail.com')
+    .split(',')
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+const COMPANY_OWNER_RUTS = new Set(
+  String(process.env.COMPANY_OWNER_RUTS || '')
+    .split(',')
+    .map((v) => normalizeRut(v))
+    .filter(Boolean)
+);
+
 export function normalizeRut(value?: string | null): string {
   return String(value || '')
     .replace(/\./g, '')
@@ -17,11 +31,18 @@ export function isSupportAdminUser(email?: string | null, rut?: string | null): 
   return SUPPORT_ADMIN_EMAILS.has(normalizedEmail) || SUPPORT_ADMIN_RUTS.has(normalizedRut);
 }
 
+export function isCompanyOwnerUser(email?: string | null, rut?: string | null): boolean {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedRut = normalizeRut(rut);
+  return COMPANY_OWNER_EMAILS.has(normalizedEmail) || COMPANY_OWNER_RUTS.has(normalizedRut);
+}
+
 export type AuthSupportContext = {
   userId: string;
   email: string;
   rut: string;
   isSupportAdmin: boolean;
+  isCompanyOwner: boolean;
   nombres?: string | null;
   apellidoPaterno?: string | null;
 };
@@ -56,6 +77,7 @@ export async function getSupportAuthContext(): Promise<
   const email = String(usuario.email || '').trim().toLowerCase();
   const rut = normalizeRut(usuario.rut);
   const isSupportAdmin = isSupportAdminUser(email, rut);
+  const isCompanyOwner = isCompanyOwnerUser(email, rut);
 
   return {
     ok: true,
@@ -64,6 +86,7 @@ export async function getSupportAuthContext(): Promise<
       email,
       rut,
       isSupportAdmin,
+      isCompanyOwner,
       nombres: usuario.nombres,
       apellidoPaterno: usuario.apellido_paterno,
     },

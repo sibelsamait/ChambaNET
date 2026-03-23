@@ -66,6 +66,7 @@ export interface CrearPagoResponse {
     checkout_url?: string;
     sandbox_checkout_url?: string;
     public_key?: string;
+    porcentaje_tarifa?: number;
   };
 }
 
@@ -74,7 +75,7 @@ export interface DesgloseMontos {
   monto_base: number;
   tarifa_servicio: number;
   monto_total: number;
-  porcentaje_tarifa: number; // 6% típicamente
+  porcentaje_tarifa: number; // IVA + margen (por defecto 26%)
 }
 
 // ============================================================================

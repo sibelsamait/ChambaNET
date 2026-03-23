@@ -3,7 +3,9 @@
 import React, { useState, useCallback } from 'react';
 import { Pago, DesgloseMontos, CheckoutModalProps } from '@/types/pagos';
 
-const TARIFA_SERVICIO_PORCENTAJE = 0.06; // 6%
+const IVA_PORCENTAJE = 0.19;
+const MARGEN_SERVICIO_PORCENTAJE = 0.07;
+const TARIFA_SERVICIO_PORCENTAJE = IVA_PORCENTAJE + MARGEN_SERVICIO_PORCENTAJE;
 
 /**
  * CheckoutModal - Flujo de pago para empleadores
@@ -137,7 +139,7 @@ export default function CheckoutModal({
           <div className="flex justify-between border-t border-gray-200 pt-3">
             <div>
               <span className="text-sm font-medium text-gray-700">
-                Tarifa de Servicio y Seguro
+                IVA + Servicio de Plataforma
               </span>
               <span className="ml-1 text-xs text-gray-500">
                 ({desglose.porcentaje_tarifa.toFixed(0)}%)
@@ -162,8 +164,8 @@ export default function CheckoutModal({
             ✓ Pago Seguro: El dinero se retiene hasta que se complete la chamba.
           </p>
           <p className="mt-1">
-            ✓ Sin cambios: El monto se fija al confirmar. La tarifa (6%) cubre cobertura de
-            seguro y protección de fraude.
+            ✓ Sin cambios: El monto se fija al confirmar. La tarifa corresponde a IVA (19%) +
+            servicio de plataforma (7%).
           </p>
         </div>
 
