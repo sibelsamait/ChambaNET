@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { supabase } from '../../../../lib/supabase';
+import { createSupabaseServerClient } from '../../../../lib/supabase';
 
 type Conexion = {
   chambaId: string;
@@ -66,6 +66,7 @@ export async function GET() {
       return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
     }
 
+    const supabase = createSupabaseServerClient(accessToken);
     const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
 
     if (authError || !authData.user) {

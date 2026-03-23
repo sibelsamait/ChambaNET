@@ -1,14 +1,26 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { cookies } from 'next/headers';
+import { createSupabaseServerClient, supabase } from '../../../../lib/supabase';
 import { getAverageRatingsByUserIds } from '../../../../lib/ratings';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, context: RouteContext) {
   try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
+    const db = createSupabaseServerClient(accessToken);
+
     const { id: chambaId } = await context.params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    let userId = searchParams.get('userId');
+
+    if (accessToken) {
+      const { data: authData } = await db.auth.getUser(accessToken);
+      if (authData.user?.id) {
+        userId = authData.user.id;
+      }
+    }
 
     // 1. Chamba completa
     const { data: chamba, error: chambaError } = await supabase
@@ -47,7 +59,7 @@ export async function GET(request: Request, context: RouteContext) {
       : { data: null };
 
     const { data: trabajadorActivoImagen } = trabajadorActivoId
-      ? await supabase
+      ? await db
           .from('user_imagenes')
           .select('image_data_url')
           .eq('user_id', trabajadorActivoId)
@@ -150,7 +162,7 @@ export async function GET(request: Request, context: RouteContext) {
     const empleadorPromedio = empleadorRatingMap.get(chamba.empleador_id) ?? null;
 
     // 5. Imagen del empleador
-    const { data: empImagen } = await supabase
+    const { data: empImagen } = await db
       .from('user_imagenes')
       .select('image_data_url')
       .eq('user_id', chamba.empleador_id)

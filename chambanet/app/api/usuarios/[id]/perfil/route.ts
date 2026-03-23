@@ -1,11 +1,26 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '../../../../../lib/supabase';
+import { cookies } from 'next/headers';
+import { createSupabaseServerClient } from '../../../../../lib/supabase';
 import { getAverageRatingsByUserIds } from '../../../../../lib/ratings';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
+    }
+
+    const supabase = createSupabaseServerClient(accessToken);
+    const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: 'Sesión inválida o expirada.' }, { status: 401 });
+    }
+
     const { id: userId } = await context.params;
 
     // Datos del usuario
