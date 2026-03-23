@@ -4,7 +4,6 @@ import { cookies } from 'next/headers';
 import Sidebar from '@/app/dashboard/components/Sidebar';
 import WalletPanel from './components/WalletPanel';
 import { isSupportAdminUser } from '@/lib/supportAuth';
-import { HistorialBilleteraResponse, TransaccionBilletera } from '@/types/pagos';
 
 export default async function BilleteraPage() {
   const cookieStore = await cookies();
@@ -44,11 +43,13 @@ export default async function BilleteraPage() {
   const saldoActual = saldoResult || 0;
 
   // Obtener historial de transacciones
-  const { data: transacciones = [] } = await supabase
+  const { data: transaccionesData } = await supabase
     .from('transacciones_billetera')
     .select('*')
     .eq('usuario_id', userId)
     .order('created_at', { ascending: false });
+
+  const transacciones = transaccionesData ?? [];
 
   const isSupportAdmin = isSupportAdminUser(usuario?.email, usuario?.rut);
 
