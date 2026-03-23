@@ -169,12 +169,34 @@ export async function GET(request: Request, context: RouteContext) {
       .eq('estado', 'FINALIZADA');
 
     // 7. Valoraciones recibidas por el empleador (sin join para evitar ambigüedad de FK)
-    const { data: valoracionesRaw } = await supabase
+    let { data: valoracionesRaw, error: valoracionesError } = await supabase
       .from('valoraciones')
       .select('estrellas, comentario, emisor_id')
       .eq('receptor_id', chamba.empleador_id)
       .order('creado_en', { ascending: false })
       .limit(10);
+
+    if (valoracionesError) {
+      const fallback = await supabase
+        .from('valoraciones')
+        .select('estrellas, comentario, emisor_id')
+        .eq('receptor_id', chamba.empleador_id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      valoracionesRaw = fallback.data;
+      valoracionesError = fallback.error;
+    }
+
+    if (valoracionesError) {
+      const fallback = await supabase
+        .from('valoraciones')
+        .select('estrellas, comentario, emisor_id')
+        .eq('receptor_id', chamba.empleador_id)
+        .limit(10);
+
+      valoracionesRaw = fallback.data;
+    }
 
     let valoraciones: { estrellas: number; comentario: string | null; emisor_nombre: string }[] = [];
     if (valoracionesRaw && valoracionesRaw.length > 0) {

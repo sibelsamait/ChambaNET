@@ -45,12 +45,34 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     // Valoraciones recibidas
-    const { data: valoracionesRaw } = await supabase
+    let { data: valoracionesRaw, error: valoracionesError } = await supabase
       .from('valoraciones')
       .select('estrellas, comentario, emisor_id')
       .eq('receptor_id', userId)
       .order('creado_en', { ascending: false })
       .limit(20);
+
+    if (valoracionesError) {
+      const fallback = await supabase
+        .from('valoraciones')
+        .select('estrellas, comentario, emisor_id')
+        .eq('receptor_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      valoracionesRaw = fallback.data;
+      valoracionesError = fallback.error;
+    }
+
+    if (valoracionesError) {
+      const fallback = await supabase
+        .from('valoraciones')
+        .select('estrellas, comentario, emisor_id')
+        .eq('receptor_id', userId)
+        .limit(20);
+
+      valoracionesRaw = fallback.data;
+    }
 
     let valoraciones: { estrellas: number; comentario: string | null; emisor_nombre: string }[] = [];
     if (valoracionesRaw && valoracionesRaw.length > 0) {

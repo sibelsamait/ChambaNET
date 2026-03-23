@@ -50,17 +50,57 @@ export default async function PerfilPage() {
     .eq('user_id', userId)
     .maybeSingle();
 
-  const { data: valoracionesRaw } = await supabase
+  let { data: valoracionesRaw, error: valoracionesRawError } = await supabase
     .from('valoraciones')
-    .select('estrellas, comentario, emisor_id, creado_en')
+    .select('estrellas, comentario, emisor_id')
     .eq('receptor_id', userId)
     .order('creado_en', { ascending: false });
 
-  const { data: valoracionesRealizadasRaw } = await supabase
+  if (valoracionesRawError) {
+    const fallback = await supabase
+      .from('valoraciones')
+      .select('estrellas, comentario, emisor_id')
+      .eq('receptor_id', userId)
+      .order('created_at', { ascending: false });
+
+    valoracionesRaw = fallback.data;
+    valoracionesRawError = fallback.error;
+  }
+
+  if (valoracionesRawError) {
+    const fallback = await supabase
+      .from('valoraciones')
+      .select('estrellas, comentario, emisor_id')
+      .eq('receptor_id', userId);
+
+    valoracionesRaw = fallback.data;
+  }
+
+  let { data: valoracionesRealizadasRaw, error: valoracionesRealizadasRawError } = await supabase
     .from('valoraciones')
-    .select('estrellas, comentario, receptor_id, chamba_id, creado_en')
+    .select('estrellas, comentario, receptor_id, chamba_id')
     .eq('emisor_id', userId)
     .order('creado_en', { ascending: false });
+
+  if (valoracionesRealizadasRawError) {
+    const fallback = await supabase
+      .from('valoraciones')
+      .select('estrellas, comentario, receptor_id, chamba_id')
+      .eq('emisor_id', userId)
+      .order('created_at', { ascending: false });
+
+    valoracionesRealizadasRaw = fallback.data;
+    valoracionesRealizadasRawError = fallback.error;
+  }
+
+  if (valoracionesRealizadasRawError) {
+    const fallback = await supabase
+      .from('valoraciones')
+      .select('estrellas, comentario, receptor_id, chamba_id')
+      .eq('emisor_id', userId);
+
+    valoracionesRealizadasRaw = fallback.data;
+  }
 
   const emisorIds = Array.from(new Set((valoracionesRaw || []).map((v) => v.emisor_id).filter(Boolean)));
   const { data: emisores } = emisorIds.length
