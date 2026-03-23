@@ -11,7 +11,7 @@ export default function ChatPanel() {
   ];
 
   return (
-    <aside className="flex w-full flex-shrink-0 flex-col border-t border-blue-200 bg-[#f2f2f2] lg:w-64 lg:border-t-0 lg:border-l lg:border-l-blue-200">
+    <aside id="chat-panel" className="flex w-full flex-shrink-0 flex-col border-t border-blue-200 bg-[#f2f2f2] lg:w-64 lg:border-t-0 lg:border-l lg:border-l-blue-200">
       <div className="flex h-14 items-center justify-between border-b border-blue-200 px-4">
         <h2 className="text-xl font-bold text-black">Chat</h2>
       </div>

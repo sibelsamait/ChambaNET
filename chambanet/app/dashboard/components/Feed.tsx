@@ -115,6 +115,13 @@ interface ChambaDetalleFull {
   postulantes?: PostulanteItem[];
 }
 
+interface EvidenciaMeta {
+  nombre: string;
+  tamano: number;
+  tipo: string;
+  fecha: string;
+}
+
 export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: string }) {
   const router = useRouter();
   const [vista, setVista] = useState<'listado' | 'mapa'>('listado');
@@ -142,6 +149,13 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [gestionandoPostulacion, setGestionandoPostulacion] = useState<string | null>(null);
   const [fotosAdjuntas, setFotosAdjuntas] = useState<File[]>([]);
   const [fotosPreview, setFotosPreview] = useState<string[]>([]);
+  const [chambaActivaTrabajador, setChambaActivaTrabajador] = useState<ChambaDetalleFull | null>(null);
+  const [cargandoChambaActivaTrabajador, setCargandoChambaActivaTrabajador] = useState(true);
+  const [evidenciasAdjuntas, setEvidenciasAdjuntas] = useState<File[]>([]);
+  const [evidenciasPreview, setEvidenciasPreview] = useState<string[]>([]);
+  const [subiendoEvidencias, setSubiendoEvidencias] = useState(false);
+  const [mensajeEvidencias, setMensajeEvidencias] = useState<string | null>(null);
+  const [mensajeContacto, setMensajeContacto] = useState<string | null>(null);
   const [geocodeEstado, setGeocodeEstado] = useState<'idle' | 'ok'>('idle');
   const [geocodandoDireccion, setGeocodandoDireccion] = useState(false);
   const [direccionModificada, setDireccionModificada] = useState(false);
@@ -187,6 +201,21 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     return errores;
   }, [form.titulo, form.descripcion, form.pago_clp, form.horario]);
 
+  const empleadorChambasActivas = useMemo(
+    () =>
+      misChambas.filter(
+        (item) =>
+          item.rol === 'empleador' &&
+          ['PUBLICADA', 'CON_POSTULANTES', 'EN_OBRA', 'ESPERANDO_APROBACION'].includes(item.estado)
+      ),
+    [misChambas]
+  );
+
+  const indiceChambaActivaModal = useMemo(
+    () => (modalChambaId ? empleadorChambasActivas.findIndex((item) => item.id === modalChambaId) : -1),
+    [modalChambaId, empleadorChambasActivas]
+  );
+
   useEffect(() => {
     setChambasList(chambas);
   }, [chambas]);
@@ -196,6 +225,66 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       fotosPreview.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [fotosPreview]);
+
+  useEffect(() => {
+    return () => {
+      evidenciasPreview.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [evidenciasPreview]);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    const cargarChambaActivaTrabajador = async () => {
+      setCargandoChambaActivaTrabajador(true);
+      try {
+        const resMisChambas = await fetch(`/api/chambas/mis-chambas?userId=${userId}`);
+        const dataMisChambas = await resMisChambas.json();
+
+        if (!resMisChambas.ok) {
+          throw new Error(dataMisChambas?.error || 'No se pudo cargar el estado del trabajador.');
+        }
+
+        const misChambasUsuario: MiChambaItem[] = dataMisChambas.chambas ?? [];
+        setMisChambas(misChambasUsuario);
+
+        const activaEnObra = misChambasUsuario.find(
+          (item: MiChambaItem) => item.rol === 'postulante' && (item.estado === 'EN_OBRA' || item.estado === 'ESPERANDO_APROBACION')
+        );
+
+        if (!activaEnObra) {
+          if (!cancelado) {
+            setChambaActivaTrabajador(null);
+          }
+          return;
+        }
+
+        const resDetalle = await fetch(`/api/chambas/${activaEnObra.id}?userId=${userId}`);
+        const dataDetalle = await resDetalle.json();
+
+        if (!resDetalle.ok) {
+          throw new Error(dataDetalle?.error || 'No se pudo cargar el detalle de tu chamba activa.');
+        }
+
+        if (!cancelado) {
+          setChambaActivaTrabajador(dataDetalle);
+        }
+      } catch {
+        if (!cancelado) {
+          setChambaActivaTrabajador(null);
+        }
+      } finally {
+        if (!cancelado) {
+          setCargandoChambaActivaTrabajador(false);
+        }
+      }
+    };
+
+    cargarChambaActivaTrabajador();
+    return () => {
+      cancelado = true;
+    };
+  }, [userId]);
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -644,6 +733,77 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     }
   };
 
+  const handleSeleccionEvidencias = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const archivos = Array.from(event.target.files || []).slice(0, 4);
+    evidenciasPreview.forEach((url) => URL.revokeObjectURL(url));
+    setEvidenciasAdjuntas(archivos);
+    setEvidenciasPreview(archivos.map((file) => URL.createObjectURL(file)));
+    setMensajeEvidencias(null);
+  };
+
+  const handleSubirEvidencias = async () => {
+    if (!chambaActivaTrabajador?.chamba.id) return;
+    if (evidenciasAdjuntas.length === 0) {
+      setMensajeEvidencias('Selecciona al menos una evidencia para subir.');
+      return;
+    }
+
+    setSubiendoEvidencias(true);
+    setMensajeEvidencias(null);
+
+    try {
+      const registros: EvidenciaMeta[] = evidenciasAdjuntas.map((file) => ({
+        nombre: file.name,
+        tamano: file.size,
+        tipo: file.type,
+        fecha: new Date().toISOString(),
+      }));
+
+      const storageKey = `chamba_evidencias_${chambaActivaTrabajador.chamba.id}`;
+      const prevRaw = localStorage.getItem(storageKey);
+      const prevParsed: EvidenciaMeta[] = prevRaw ? JSON.parse(prevRaw) : [];
+      localStorage.setItem(storageKey, JSON.stringify([...prevParsed, ...registros]));
+
+      evidenciasPreview.forEach((url) => URL.revokeObjectURL(url));
+      setEvidenciasAdjuntas([]);
+      setEvidenciasPreview([]);
+      setMensajeEvidencias('Evidencias registradas correctamente.');
+    } catch {
+      setMensajeEvidencias('No se pudieron registrar las evidencias. Intenta nuevamente.');
+    } finally {
+      setSubiendoEvidencias(false);
+    }
+  };
+
+  const handleContactarEmpleador = () => {
+    const chatPanel = document.getElementById('chat-panel');
+    if (chatPanel) {
+      chatPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setMensajeContacto('Panel de chat enfocado. Puedes contactar al empleador desde ahí.');
+      return;
+    }
+
+    setMensajeContacto('Abre el panel de chat para contactar al empleador.');
+  };
+
+  const handleNavegarChambaActivaEmpleador = useCallback(
+    (direccion: 'anterior' | 'siguiente') => {
+      if (indiceChambaActivaModal < 0 || empleadorChambasActivas.length < 2) return;
+      const offset = direccion === 'siguiente' ? 1 : -1;
+      const total = empleadorChambasActivas.length;
+      const siguienteIndice = (indiceChambaActivaModal + offset + total) % total;
+      const siguiente = empleadorChambasActivas[siguienteIndice];
+      if (siguiente) {
+        handleAbrirDetalle(siguiente.id);
+      }
+    },
+    [indiceChambaActivaModal, empleadorChambasActivas, handleAbrirDetalle]
+  );
+
+  const mostrarVistaTrabajadorEnObra = Boolean(
+    chambaActivaTrabajador && chambaActivaTrabajador.chamba.empleador_id !== userId
+  );
+
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-blue-500/95 text-white">
       {/* Panel perfil completo del trabajador (z-[60], sobre el modal de chamba) */}
@@ -762,6 +922,28 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 <p className="py-8 text-center text-sm text-gray-500">Cargando detalle…</p>
               ) : modalChambaData ? (
                 <>
+                  {modalChambaData.chamba.empleador_id === userId && empleadorChambasActivas.length > 1 && indiceChambaActivaModal >= 0 && (
+                    <div className="mb-3 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => handleNavegarChambaActivaEmpleador('anterior')}
+                        className="liftable rounded-full bg-white px-3 py-1 text-xs font-extrabold text-blue-700 shadow-sm hover:bg-blue-100"
+                      >
+                        ← Anterior
+                      </button>
+                      <p className="text-[11px] font-extrabold uppercase tracking-wide text-blue-700">
+                        Activa {indiceChambaActivaModal + 1} de {empleadorChambasActivas.length}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleNavegarChambaActivaEmpleador('siguiente')}
+                        className="liftable rounded-full bg-white px-3 py-1 text-xs font-extrabold text-blue-700 shadow-sm hover:bg-blue-100"
+                      >
+                        Siguiente →
+                      </button>
+                    </div>
+                  )}
+
                   {/* Mini empleador */}
                   <div className="mb-3 flex items-center gap-2.5 border-b border-dashed border-[#d6c989] pb-3">
                     <Avatar
@@ -1214,6 +1396,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
         </div>
       )}
 
+      {!mostrarVistaTrabajadorEnObra && (
       <div className="h-14 border-b border-blue-300/40 px-3 sm:px-6">
         <div className="mx-auto flex h-full max-w-4xl items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-6">
@@ -1305,9 +1488,122 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           </div>
         </div>
       </div>
+      )}
 
       <div className="feed-scroll flex-1 overflow-y-auto px-3 py-3 sm:px-4 lg:px-6 lg:py-5">
-        {vista === 'listado' ? (
+        {cargandoChambaActivaTrabajador ? (
+          <p className="mx-auto mt-10 text-center text-lg font-semibold text-blue-100">
+            Cargando tu chamba activa...
+          </p>
+        ) : mostrarVistaTrabajadorEnObra && chambaActivaTrabajador ? (
+          <section className="mx-auto w-full max-w-4xl rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_12px_40px_rgba(58,82,123,0.30)] sm:p-6">
+            <div className="mb-4 border-b-2 border-dashed border-[#d6c989] pb-4">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Chamba en obra</p>
+              <h2 className="mt-1 text-2xl font-extrabold leading-tight text-black">{chambaActivaTrabajador.chamba.titulo}</h2>
+              <p className="mt-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-700 inline-block">
+                {chambaActivaTrabajador.chamba.estado.replace(/_/g, ' ')}
+              </p>
+            </div>
+
+            <div className="mb-5 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-[#d6c989] bg-white/70 p-4">
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Detalles de la chamba</h3>
+                <p className="mt-2 text-sm font-semibold leading-snug text-gray-800">
+                  {chambaActivaTrabajador.chamba.descripcion || 'Sin descripción disponible.'}
+                </p>
+                <div className="mt-3 space-y-1.5 text-sm font-bold text-gray-900">
+                  <p>💰 CLP$ {chambaActivaTrabajador.chamba.pago_clp.toLocaleString('es-CL')}</p>
+                  {(() => {
+                    const { date, time } = formatDateAndTime(chambaActivaTrabajador.chamba.horario);
+                    return <p>🕒 {date} | {time}</p>;
+                  })()}
+                  <p>📍 {chambaActivaTrabajador.chamba.direccion_texto || 'Ubicación por confirmar'}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#d6c989] bg-white/70 p-4">
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Empleador</h3>
+                <div className="mt-2 flex items-center gap-3">
+                  <Avatar
+                    imageUrl={chambaActivaTrabajador.empleador.imagen_url}
+                    name={`${chambaActivaTrabajador.empleador.nombres} ${chambaActivaTrabajador.empleador.apellido_paterno}`}
+                    alt="Foto del empleador"
+                    className="h-12 w-12 rounded-full border-2 border-blue-200 object-cover"
+                    fallbackClassName="text-sm"
+                  />
+                  <div>
+                    <p className="text-sm font-extrabold text-gray-900">
+                      {chambaActivaTrabajador.empleador.nombres} {chambaActivaTrabajador.empleador.apellido_paterno}
+                    </p>
+                    <p className="text-sm font-black text-gray-900">
+                      ☆{' '}
+                      {typeof chambaActivaTrabajador.empleador.promedio_valoracion === 'number'
+                        ? chambaActivaTrabajador.empleador.promedio_valoracion.toFixed(1).replace('.', ',')
+                        : '-'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleContactarEmpleador}
+                  className="liftable mt-4 w-full rounded-full bg-blue-500 px-5 py-2.5 text-sm font-extrabold text-white transition hover:bg-blue-600"
+                >
+                  Contactar al empleador
+                </button>
+                {mensajeContacto ? (
+                  <p className="mt-2 text-xs font-semibold text-blue-700">{mensajeContacto}</p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[#d6c989] bg-white/70 p-4">
+              <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Subir evidencias</h3>
+              <p className="mt-1 text-xs font-semibold text-gray-600">
+                Adjunta fotos o archivos de avance de la chamba para dejar respaldo.
+              </p>
+
+              <div className="mt-3 space-y-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleSeleccionEvidencias}
+                  className="w-full rounded-lg border border-[#c9ba6a] bg-white/80 px-3 py-2 text-xs text-gray-800 file:mr-3 file:rounded-full file:border-0 file:bg-blue-100 file:px-3 file:py-1.5 file:font-bold file:text-blue-700 hover:file:bg-blue-200"
+                />
+
+                {evidenciasPreview.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {evidenciasPreview.map((src, index) => (
+                      <img
+                        key={`${src}-${index}`}
+                        src={src}
+                        alt={`Evidencia ${index + 1}`}
+                        className="h-20 w-full rounded-lg border border-[#c9ba6a] object-cover"
+                      />
+                    ))}
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={handleSubirEvidencias}
+                  disabled={subiendoEvidencias || evidenciasAdjuntas.length === 0}
+                  className={`liftable rounded-full px-5 py-2 text-sm font-bold text-white ${
+                    subiendoEvidencias || evidenciasAdjuntas.length === 0
+                      ? 'cursor-not-allowed bg-gray-400'
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {subiendoEvidencias ? 'Subiendo...' : 'Guardar evidencias'}
+                </button>
+
+                {mensajeEvidencias ? (
+                  <p className="text-xs font-semibold text-blue-700">{mensajeEvidencias}</p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        ) : vista === 'listado' ? (
           chambasList.length > 0 ? (
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-3.5">
               {chambasList.map((chamba) => {
