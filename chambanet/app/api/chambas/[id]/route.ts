@@ -76,8 +76,34 @@ export async function GET(request: Request, context: RouteContext) {
     let yaValore = false;
     let receptorValoracionId: string | null = null;
     let receptorValoracionNombre: string | null = null;
+    let valoracionEmpleadorCompleta = false;
+    let valoracionTrabajadorCompleta = false;
+    let cierreHabilitadoPorValoraciones = false;
 
-    if (userId && chamba.estado === 'FINALIZADA') {
+    if (trabajadorActivoId) {
+      const { data: valoracionesPareja } = await supabase
+        .from('valoraciones')
+        .select('emisor_id, receptor_id')
+        .eq('chamba_id', chambaId)
+        .in('emisor_id', [chamba.empleador_id, trabajadorActivoId])
+        .in('receptor_id', [chamba.empleador_id, trabajadorActivoId]);
+
+      valoracionEmpleadorCompleta = Boolean(
+        valoracionesPareja?.some(
+          (v) => v.emisor_id === chamba.empleador_id && v.receptor_id === trabajadorActivoId
+        )
+      );
+
+      valoracionTrabajadorCompleta = Boolean(
+        valoracionesPareja?.some(
+          (v) => v.emisor_id === trabajadorActivoId && v.receptor_id === chamba.empleador_id
+        )
+      );
+
+      cierreHabilitadoPorValoraciones = valoracionEmpleadorCompleta && valoracionTrabajadorCompleta;
+    }
+
+    if (userId && (chamba.estado === 'FINALIZADA' || chamba.estado === 'ESPERANDO_APROBACION')) {
       if (esEmpleador && trabajadorActivoId) {
         receptorValoracionId = trabajadorActivoId;
         receptorValoracionNombre = trabajadorActivoPerfil
@@ -181,6 +207,9 @@ export async function GET(request: Request, context: RouteContext) {
       puede_aprobar_cierre: puedeAprobarCierre,
       puede_valorar: puedeValorar,
       ya_valore: yaValore,
+      valoracion_empleador_completa: valoracionEmpleadorCompleta,
+      valoracion_trabajador_completa: valoracionTrabajadorCompleta,
+      cierre_habilitado_por_valoraciones: cierreHabilitadoPorValoraciones,
       receptor_valoracion_id: receptorValoracionId,
       receptor_valoracion_nombre: receptorValoracionNombre,
       empleador: {

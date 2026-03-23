@@ -42,6 +42,19 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Chamba no encontrada.' }, { status: 404 });
     }
 
+    const { data: postulacionActiva, error: posError } = await supabase
+      .from('postulaciones')
+      .select('id, trabajador_id')
+      .eq('chamba_id', chambaId)
+      .eq('estado', 'ACEPTADA')
+      .maybeSingle();
+
+    if (posError || !postulacionActiva) {
+      return NextResponse.json({ error: 'No existe trabajador activo para esta chamba.' }, { status: 400 });
+    }
+
+    const trabajadorId = postulacionActiva.trabajador_id;
+
     if (accion === 'SOLICITAR_CIERRE') {
       if (chamba.estado !== 'EN_OBRA') {
         return NextResponse.json(
@@ -50,18 +63,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         );
       }
 
-      const { data: postulacionActiva, error: posError } = await supabase
-        .from('postulaciones')
-        .select('id, trabajador_id')
-        .eq('chamba_id', chambaId)
-        .eq('estado', 'ACEPTADA')
-        .maybeSingle();
-
-      if (posError || !postulacionActiva) {
-        return NextResponse.json({ error: 'No existe trabajador activo para esta chamba.' }, { status: 400 });
-      }
-
-      if (postulacionActiva.trabajador_id !== userId) {
+      if (trabajadorId !== userId) {
         return NextResponse.json(
           { error: 'Solo el trabajador activo puede solicitar el cierre.' },
           { status: 403 }
@@ -91,6 +93,45 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (chamba.estado !== 'ESPERANDO_APROBACION') {
       return NextResponse.json(
         { error: 'La chamba debe estar en ESPERANDO_APROBACION para finalizar.' },
+        { status: 400 }
+      );
+    }
+
+    const { data: valoraciones, error: valoracionesError } = await supabase
+      .from('valoraciones')
+      .select('emisor_id, receptor_id')
+      .eq('chamba_id', chambaId)
+      .in('emisor_id', [chamba.empleador_id, trabajadorId])
+      .in('receptor_id', [chamba.empleador_id, trabajadorId]);
+
+    if (valoracionesError) {
+      return NextResponse.json(
+        { error: 'No se pudieron validar las valoraciones obligatorias.' },
+        { status: 500 }
+      );
+    }
+
+    const empleadorValoro = Boolean(
+      valoraciones?.some(
+        (v) => v.emisor_id === chamba.empleador_id && v.receptor_id === trabajadorId
+      )
+    );
+
+    const trabajadorValoro = Boolean(
+      valoraciones?.some(
+        (v) => v.emisor_id === trabajadorId && v.receptor_id === chamba.empleador_id
+      )
+    );
+
+    if (!empleadorValoro || !trabajadorValoro) {
+      const faltantes: string[] = [];
+      if (!empleadorValoro) faltantes.push('falta la valoración del empleador al trabajador');
+      if (!trabajadorValoro) faltantes.push('falta la valoración del trabajador al empleador');
+
+      return NextResponse.json(
+        {
+          error: `No se puede cerrar la chamba: ${faltantes.join(' y ')}. Ambas valoraciones son obligatorias.`,
+        },
         { status: 400 }
       );
     }

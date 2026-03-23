@@ -55,9 +55,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Chamba no encontrada.' }, { status: 404 });
     }
 
-    if (chamba.estado !== 'FINALIZADA') {
+    if (chamba.estado !== 'FINALIZADA' && chamba.estado !== 'ESPERANDO_APROBACION') {
       return NextResponse.json(
-        { error: 'Solo se puede valorar una chamba FINALIZADA.' },
+        { error: 'Solo se puede valorar una chamba en ESPERANDO_APROBACION o FINALIZADA.' },
         { status: 400 }
       );
     }

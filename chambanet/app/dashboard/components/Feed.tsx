@@ -59,6 +59,10 @@ interface MiChambaItem {
   pago_clp: number;
   estado: string;
   rol: 'empleador' | 'postulante';
+  valoracion_empleador_completa?: boolean;
+  valoracion_trabajador_completa?: boolean;
+  cierre_habilitado_por_valoraciones?: boolean;
+  badge_alerta?: string | null;
 }
 
 interface PostulanteItem {
@@ -123,6 +127,9 @@ interface ChambaDetalleFull {
   puede_aprobar_cierre?: boolean;
   puede_valorar?: boolean;
   ya_valore?: boolean;
+  valoracion_empleador_completa?: boolean;
+  valoracion_trabajador_completa?: boolean;
+  cierre_habilitado_por_valoraciones?: boolean;
   receptor_valoracion_id?: string | null;
   receptor_valoracion_nombre?: string | null;
 }
@@ -951,7 +958,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   };
 
   const handleEnviarValoracion = async () => {
-    const detalleObjetivo = modalChambaData ?? chambaActivaTrabajador;
+    const detalleObjetivo = modalChambaData ?? chambaActivaTrabajador ?? chambaActivaEmpleador;
     if (!detalleObjetivo?.receptor_valoracion_id) {
       setErrorValoracion('No se pudo identificar a quién valorar.');
       return;
@@ -983,6 +990,14 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
         if (refetch.ok) {
           const updated = await refetch.json();
           setChambaActivaTrabajador(updated);
+        }
+      }
+
+      if (chambaActivaEmpleador?.chamba.id === detalleObjetivo.chamba.id) {
+        const refetch = await fetch(`/api/chambas/${detalleObjetivo.chamba.id}?userId=${userId}`);
+        if (refetch.ok) {
+          const updated = await refetch.json();
+          setChambaActivaEmpleador(updated);
         }
       }
 
@@ -1123,7 +1138,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               <div>
                 <h3 className="text-lg font-extrabold text-black">Valorar chamba finalizada</h3>
                 <p className="mt-1 text-xs font-semibold text-gray-700">
-                  Comparte tu experiencia sobre {modalChambaData?.receptor_valoracion_nombre || chambaActivaTrabajador?.receptor_valoracion_nombre || 'la contraparte'}.
+                  Comparte tu experiencia sobre {modalChambaData?.receptor_valoracion_nombre || chambaActivaTrabajador?.receptor_valoracion_nombre || chambaActivaEmpleador?.receptor_valoracion_nombre || 'la contraparte'}.
                 </p>
               </div>
               <button
@@ -1389,18 +1404,40 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   {modalChambaData.chamba.empleador_id === userId && modalChambaData.puede_aprobar_cierre && (
                     <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
                       <p className="text-xs font-semibold text-emerald-900">
-                        El trabajador solicitó finalizar esta chamba.
+                        El trabajador solicitó finalizar esta chamba. Para cerrar efectivamente, ambas valoraciones son obligatorias.
                       </p>
+                      <p className="mt-2 text-xs font-semibold text-emerald-900">
+                        Estado de valoraciones: empleador {modalChambaData.valoracion_empleador_completa ? '✓' : 'pendiente'} · trabajador {modalChambaData.valoracion_trabajador_completa ? '✓' : 'pendiente'}.
+                      </p>
+
+                      {!modalChambaData.ya_valore && modalChambaData.puede_valorar && (
+                        <button
+                          type="button"
+                          onClick={abrirModalValoracion}
+                          className="liftable mt-2 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-extrabold text-white hover:bg-blue-700"
+                        >
+                          Calificar trabajador
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={handleAprobarCierreEmpleador}
-                        disabled={gestionandoCierre}
+                        disabled={gestionandoCierre || !modalChambaData.cierre_habilitado_por_valoraciones}
                         className={`liftable mt-2 rounded-full px-4 py-1.5 text-xs font-extrabold text-white ${
-                          gestionandoCierre ? 'cursor-not-allowed bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'
+                          gestionandoCierre || !modalChambaData.cierre_habilitado_por_valoraciones
+                            ? 'cursor-not-allowed bg-gray-400'
+                            : 'bg-emerald-600 hover:bg-emerald-700'
                         }`}
                       >
                         {gestionandoCierre ? 'Finalizando...' : 'Aprobar y finalizar'}
                       </button>
+
+                      {!modalChambaData.cierre_habilitado_por_valoraciones ? (
+                        <p className="mt-2 text-xs font-semibold text-amber-700">
+                          No se puede finalizar hasta que empleador y trabajador registren su valoración.
+                        </p>
+                      ) : null}
                     </div>
                   )}
 
@@ -1869,6 +1906,11 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                                 <span className="mx-1">·</span>
                                 <span className="uppercase">{item.estado.replace(/_/g, ' ')}</span>
                               </p>
+                              {item.badge_alerta ? (
+                                <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-800">
+                                  {item.badge_alerta}
+                                </p>
+                              ) : null}
                             </div>
                           </button>
                         </li>
@@ -2034,12 +2076,12 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 </p>
               )}
 
-              {chambaActivaTrabajador.chamba.estado === 'FINALIZADA' && (
+              {(chambaActivaTrabajador.chamba.estado === 'ESPERANDO_APROBACION' || chambaActivaTrabajador.chamba.estado === 'FINALIZADA') && (
                 <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
                   <p className="text-xs font-bold text-blue-800">
                     {chambaActivaTrabajador.ya_valore
                       ? 'Ya registraste tu valoración para esta chamba.'
-                      : `Puedes valorar a ${chambaActivaTrabajador.receptor_valoracion_nombre ?? 'la contraparte'}.`}
+                      : `Debes valorar a ${chambaActivaTrabajador.receptor_valoracion_nombre ?? 'la contraparte'} para completar el cierre.`}
                   </p>
                   {!chambaActivaTrabajador.ya_valore && chambaActivaTrabajador.puede_valorar && (
                     <button
@@ -2109,8 +2151,24 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               {chambaActivaEmpleador.chamba.estado === 'ESPERANDO_APROBACION' ? (
                 <>
                   <p className="mt-2 text-xs font-semibold text-gray-700">
-                    El trabajador ya envió su evidencia y solicitó cierre. Puedes contactar a soporte o completar la chamba para efectuar el pago.
+                    El trabajador ya envió su evidencia y solicitó cierre. Para cerrar efectivamente, empleador y trabajador deben calificarse mutuamente.
                   </p>
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs font-semibold text-blue-800">
+                    <p>
+                      Estado de valoraciones: empleador {chambaActivaEmpleador.valoracion_empleador_completa ? '✓' : 'pendiente'} · trabajador {chambaActivaEmpleador.valoracion_trabajador_completa ? '✓' : 'pendiente'}.
+                    </p>
+                  </div>
+
+                  {!chambaActivaEmpleador.ya_valore && chambaActivaEmpleador.puede_valorar ? (
+                    <button
+                      type="button"
+                      onClick={abrirModalValoracion}
+                      className="liftable mt-3 rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                    >
+                      Calificar trabajador
+                    </button>
+                  ) : null}
+
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <button
                       type="button"
@@ -2122,14 +2180,22 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     <button
                       type="button"
                       onClick={handleCompletarChambaEmpleador}
-                      disabled={gestionandoCierre}
+                      disabled={gestionandoCierre || !chambaActivaEmpleador.cierre_habilitado_por_valoraciones}
                       className={`liftable rounded-full px-5 py-2 text-sm font-bold text-white ${
-                        gestionandoCierre ? 'cursor-not-allowed bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'
+                        gestionandoCierre || !chambaActivaEmpleador.cierre_habilitado_por_valoraciones
+                          ? 'cursor-not-allowed bg-gray-400'
+                          : 'bg-emerald-600 hover:bg-emerald-700'
                       }`}
                     >
                       {gestionandoCierre ? 'Completando...' : 'Completar chamba (efectuar pago)'}
                     </button>
                   </div>
+
+                  {!chambaActivaEmpleador.cierre_habilitado_por_valoraciones ? (
+                    <p className="mt-2 text-xs font-semibold text-amber-700">
+                      No se puede completar la chamba hasta que ambas valoraciones estén registradas.
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <p className="mt-2 text-xs font-semibold text-gray-700">
