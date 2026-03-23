@@ -2,6 +2,9 @@
 
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { communes } from '@clregions/data/array/communes';
+import { provinces } from '@clregions/data/array/provinces';
+import { regions } from '@clregions/data/array/regions';
 import Avatar from './Avatar';
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
@@ -85,6 +88,46 @@ function toDateInputValue(rawValue?: string | null) {
   return date.toISOString().slice(0, 10);
 }
 
+function normalizeText(value?: string | null) {
+  return (value || '').trim().toLocaleLowerCase('es-CL');
+}
+
+function resolveRegionId(rawRegionId?: string, rawRegionName?: string) {
+  if (rawRegionId) return rawRegionId;
+  const regionByName = regions.find((region) => normalizeText(region.name) === normalizeText(rawRegionName));
+  return regionByName?.id ?? '';
+}
+
+function resolveRegionName(regionId?: string, fallback?: string) {
+  if (!regionId) return fallback || '';
+  const region = regions.find((item) => item.id === regionId);
+  return region?.name ?? fallback ?? '';
+}
+
+function getCommuneOptionsByRegionId(regionId?: string) {
+  if (!regionId) return [] as typeof communes;
+  const provinceIds = new Set(
+    provinces.filter((province) => province.regionId === regionId).map((province) => province.id)
+  );
+  return communes
+    .filter((commune) => provinceIds.has(commune.provinceId))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es-CL'));
+}
+
+function resolveCommuneId(rawCommuneId: string | undefined, rawCommuneName: string | undefined, regionId: string) {
+  if (rawCommuneId) return rawCommuneId;
+  const communeByName = getCommuneOptionsByRegionId(regionId).find(
+    (commune) => normalizeText(commune.name) === normalizeText(rawCommuneName)
+  );
+  return communeByName?.id ?? '';
+}
+
+function resolveCommuneName(communeId?: string, fallback?: string) {
+  if (!communeId) return fallback || '';
+  const commune = communes.find((item) => item.id === communeId);
+  return commune?.name ?? fallback ?? '';
+}
+
 export default function ActiveProfileView({
   fullName,
   ratingText,
@@ -102,6 +145,8 @@ export default function ActiveProfileView({
   completedPosts,
 }: ActiveProfileViewProps) {
   const router = useRouter();
+  const initialRegionId = resolveRegionId(direccion.regionId, direccion.regionNombre);
+  const initialCommuneId = resolveCommuneId(direccion.comunaId, direccion.comunaNombre, initialRegionId);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [savedImageUrl, setSavedImageUrl] = useState<string | null>(initialImageUrl ?? null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(initialImageUrl ?? null);
@@ -121,10 +166,10 @@ export default function ActiveProfileView({
     fechaNacimiento: toDateInputValue(fechaNacimiento),
     calle: direccion.calle,
     numero: direccion.numero,
-    comunaNombre: direccion.comunaNombre,
-    regionNombre: direccion.regionNombre,
-    comunaId: direccion.comunaId ?? '',
-    regionId: direccion.regionId ?? '',
+    comunaNombre: resolveCommuneName(initialCommuneId, direccion.comunaNombre),
+    regionNombre: resolveRegionName(initialRegionId, direccion.regionNombre),
+    comunaId: initialCommuneId,
+    regionId: initialRegionId,
   });
   const [editForm, setEditForm] = useState<ProfileFormState>(profileData);
   const currentFullName =
@@ -144,6 +189,16 @@ export default function ActiveProfileView({
       { label: 'Región', value: profileData.regionNombre || 'Aún no registrada' },
     ],
     [memberSince, profileData]
+  );
+
+  const regionOptions = useMemo(
+    () => [...regions].sort((a, b) => a.name.localeCompare(b.name, 'es-CL')),
+    []
+  );
+
+  const communeOptions = useMemo(
+    () => getCommuneOptionsByRegionId(editForm.regionId),
+    [editForm.regionId]
   );
   const reviewCards = [
     { quote: 'Excelente paga', author: 'Paulo I.' },
@@ -298,8 +353,33 @@ export default function ActiveProfileView({
     setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleRegionChange = (regionId: string) => {
+    const selectedRegion = regionOptions.find((region) => region.id === regionId);
+    setEditForm((prev) => ({
+      ...prev,
+      regionId,
+      regionNombre: selectedRegion?.name ?? '',
+      comunaId: '',
+      comunaNombre: '',
+    }));
+  };
+
+  const handleCommuneChange = (communeId: string) => {
+    const selectedCommune = communeOptions.find((commune) => commune.id === communeId);
+    setEditForm((prev) => ({
+      ...prev,
+      comunaId: communeId,
+      comunaNombre: selectedCommune?.name ?? '',
+    }));
+  };
+
   const handleSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!editForm.regionId || !editForm.comunaId) {
+      setErrorMsg('Debes seleccionar una región y una comuna válidas.');
+      return;
+    }
 
     setIsSavingProfile(true);
     setErrorMsg(null);
@@ -444,20 +524,36 @@ export default function ActiveProfileView({
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <input
-                    value={editForm.comunaNombre}
-                    onChange={(event) => handleEditFieldChange('comunaNombre', event.target.value)}
-                    placeholder="Comuna"
+                  <select
+                    value={editForm.regionId}
+                    onChange={(event) => handleRegionChange(event.target.value)}
                     required
                     className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
-                  />
-                  <input
-                    value={editForm.regionNombre}
-                    onChange={(event) => handleEditFieldChange('regionNombre', event.target.value)}
-                    placeholder="Región"
+                  >
+                    <option value="">Selecciona una región</option>
+                    {regionOptions.map((region) => (
+                      <option key={region.id} value={region.id}>
+                        {region.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={editForm.comunaId}
+                    onChange={(event) => handleCommuneChange(event.target.value)}
+                    disabled={!editForm.regionId}
                     required
-                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
-                  />
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-gray-100"
+                  >
+                    <option value="">
+                      {editForm.regionId ? 'Selecciona una comuna' : 'Primero elige una región'}
+                    </option>
+                    {communeOptions.map((commune) => (
+                      <option key={commune.id} value={commune.id}>
+                        {commune.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {errorMsg ? <p className="text-xs font-semibold text-red-600">{errorMsg}</p> : null}
