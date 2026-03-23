@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
+import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase';
-import { getSupportAuthContext } from '@/lib/supportAuth';
+import { getSupportAuthContext, normalizeRut } from '@/lib/supportAuth';
 
 const DEFAULT_IVA_PORCENTAJE = 19;
 const DEFAULT_MARGEN_SERVICIO_PORCENTAJE = 7;
+const DEFAULT_COMPANY_BANK_ADMIN_RUT = '00.000.000-0';
+const MAX_INTENTOS = 3;
+const BLOQUEO_DIAS_HABILES = 7;
+const ACCESS_DENIED_MESSAGE =
+  'No eres el Administrador de la compañía, tu acceso está denegado';
+
+type IntentosSeguridadRow = {
+  user_id: string;
+  failed_attempts: number;
+  locked_until: string | null;
+};
 
 function isValidSecret(inputSecret: string, configuredSecret: string): boolean {
   const a = Buffer.from(inputSecret, 'utf8');
@@ -13,11 +25,97 @@ function isValidSecret(inputSecret: string, configuredSecret: string): boolean {
   return timingSafeEqual(a, b);
 }
 
+function addBusinessDays(from: Date, businessDays: number): Date {
+  const result = new Date(from);
+  let added = 0;
+
+  while (added < businessDays) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6) {
+      added += 1;
+    }
+  }
+
+  return result;
+}
+
+function denyAccess() {
+  return NextResponse.json({ error: ACCESS_DENIED_MESSAGE }, { status: 403 });
+}
+
+async function getIntentosRecord(supabase: ReturnType<typeof createSupabaseServerClient>, userId: string) {
+  const { data } = await supabase
+    .from('seguridad_intentos_config_bancaria')
+    .select('user_id, failed_attempts, locked_until')
+    .eq('user_id', userId)
+    .maybeSingle<IntentosSeguridadRow>();
+
+  return data || null;
+}
+
+async function registerFailedAttempt(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string
+) {
+  const now = new Date();
+  const current = await getIntentosRecord(supabase, userId);
+  const nextFailedAttempts = (current?.failed_attempts || 0) + 1;
+  const isLocking = nextFailedAttempts >= MAX_INTENTOS;
+  const lockedUntil = isLocking ? addBusinessDays(now, BLOQUEO_DIAS_HABILES).toISOString() : null;
+
+  await supabase.from('seguridad_intentos_config_bancaria').upsert(
+    {
+      user_id: userId,
+      failed_attempts: nextFailedAttempts,
+      locked_until: lockedUntil,
+      last_failed_at: now.toISOString(),
+    },
+    {
+      onConflict: 'user_id',
+    }
+  );
+}
+
+async function resetFailedAttempts(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string
+) {
+  await supabase
+    .from('seguridad_intentos_config_bancaria')
+    .upsert(
+      {
+        user_id: userId,
+        failed_attempts: 0,
+        locked_until: null,
+        last_failed_at: null,
+      },
+      {
+        onConflict: 'user_id',
+      }
+    );
+}
+
 export async function GET() {
   try {
     const auth = await getSupportAuthContext();
     if (!auth.ok) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    const configuredAdminRut = normalizeRut(
+      process.env.COMPANY_BANK_ADMIN_RUT || DEFAULT_COMPANY_BANK_ADMIN_RUT
+    );
+    const authenticatedRut = normalizeRut(auth.context.rut);
+
+    if (!auth.context.isSupportAdmin || authenticatedRut !== configuredAdminRut) {
+      return NextResponse.json(
+        {
+          error:
+            'Solo la cuenta empresarial con rol Admin Soporte puede consultar la configuración bancaria.',
+        },
+        { status: 403 }
+      );
     }
 
     const supabase = createSupabaseServerClient();
@@ -54,16 +152,26 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
     const auth = await getSupportAuthContext();
-    if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    if (!auth.ok || !accessToken) return denyAccess();
+
+    const supabase = createSupabaseServerClient(accessToken);
+
+    const intentos = await getIntentosRecord(supabase, auth.context.userId);
+    if (intentos?.locked_until && new Date(intentos.locked_until) > new Date()) {
+      return denyAccess();
     }
 
-    if (!auth.context.isCompanyOwner) {
-      return NextResponse.json(
-        { error: 'Solo el dueño de la empresa puede modificar la cuenta destino.' },
-        { status: 403 }
-      );
+    const configuredAdminRut = normalizeRut(
+      process.env.COMPANY_BANK_ADMIN_RUT || DEFAULT_COMPANY_BANK_ADMIN_RUT
+    );
+    const authenticatedRut = normalizeRut(auth.context.rut);
+
+    if (!auth.context.isSupportAdmin || authenticatedRut !== configuredAdminRut) {
+      await registerFailedAttempt(supabase, auth.context.userId);
+      return denyAccess();
     }
 
     const body = (await request.json()) as {
@@ -79,41 +187,28 @@ export async function PATCH(request: Request) {
 
     const configuredSecret = String(process.env.COMPANY_BANK_CONFIG_SECRET || '').trim();
     if (!configuredSecret) {
-      return NextResponse.json(
-        {
-          error:
-            'No se ha configurado la contraseña secreta del servidor para cambios bancarios.',
-        },
-        { status: 500 }
-      );
+      await registerFailedAttempt(supabase, auth.context.userId);
+      return denyAccess();
     }
 
     const inputSecret = String(body.clave_secreta || '').trim();
     if (!inputSecret || !isValidSecret(inputSecret, configuredSecret)) {
-      return NextResponse.json(
-        { error: 'Contraseña secreta incorrecta para modificar datos bancarios.' },
-        { status: 403 }
-      );
+      await registerFailedAttempt(supabase, auth.context.userId);
+      return denyAccess();
     }
 
     const iva = body.iva_porcentaje ?? DEFAULT_IVA_PORCENTAJE;
     const margen = body.margen_servicio_porcentaje ?? DEFAULT_MARGEN_SERVICIO_PORCENTAJE;
 
     if (iva < 0 || iva > 100 || margen < 0 || margen > 100) {
-      return NextResponse.json(
-        { error: 'Los porcentajes deben estar entre 0 y 100.' },
-        { status: 400 }
-      );
+      await registerFailedAttempt(supabase, auth.context.userId);
+      return denyAccess();
     }
 
     if (!body.cuenta_destino_alias || !body.cuenta_destino_numero_mascarado) {
-      return NextResponse.json(
-        { error: 'Debes informar alias y número enmascarado de cuenta destino.' },
-        { status: 400 }
-      );
+      await registerFailedAttempt(supabase, auth.context.userId);
+      return denyAccess();
     }
-
-    const supabase = createSupabaseServerClient();
 
     const { data, error } = await supabase
       .from('configuracion_financiera_empresa')
@@ -137,12 +232,15 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error || !data) {
-      throw new Error(error?.message || 'No se pudo actualizar la configuración financiera.');
+      await registerFailedAttempt(supabase, auth.context.userId);
+      return denyAccess();
     }
+
+    await resetFailedAttempts(supabase, auth.context.userId);
 
     return NextResponse.json({ config: data }, { status: 200 });
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Error actualizando configuración financiera.';
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+    console.error('Error de seguridad en configuracion financiera:', error);
+    return denyAccess();
   }
 }
