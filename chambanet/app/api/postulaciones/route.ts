@@ -25,6 +25,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Falta dato obligatorio (chamba_id).' }, { status: 400 });
     }
 
+    const { data: chamba, error: chambaError } = await supabase
+      .from('chambas')
+      .select('id, empleador_id')
+      .eq('id', chamba_id)
+      .maybeSingle();
+
+    if (chambaError) {
+      return NextResponse.json({ error: 'No se pudo validar la chamba seleccionada.' }, { status: 500 });
+    }
+
+    if (!chamba) {
+      return NextResponse.json({ error: 'La chamba no existe o no está disponible.' }, { status: 404 });
+    }
+
+    if (chamba.empleador_id === trabajador_id) {
+      return NextResponse.json({ error: 'No puedes postular a tu propia chamba.' }, { status: 403 });
+    }
+
     // REGLA DE NEGOCIO: Verificar si el trabajador ya tiene una postulación ACTIVA o ACEPTADA
     const { count, error: countError } = await supabase
       .from('postulaciones')

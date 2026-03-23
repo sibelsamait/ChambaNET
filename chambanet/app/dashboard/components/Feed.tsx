@@ -692,6 +692,12 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   };
 
   const handlePostular = async (chambaId: string) => {
+    const chamba = chambasList.find((item) => item.id === chambaId);
+    if (chamba?.empleador_id === userId) {
+      alert('No puedes postular a tu propia chamba.');
+      return;
+    }
+
     setPostulandoId(chambaId);
 
     try {
@@ -862,6 +868,11 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   };
 
   const handlePostularEnModal = async (chambaId: string) => {
+    if (modalChambaData?.chamba.empleador_id === userId) {
+      alert('No puedes postular a tu propia chamba.');
+      return;
+    }
+
     setPostulandoId(chambaId);
     try {
       const res = await fetch('/api/postulaciones', {
@@ -2659,17 +2670,23 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                         </div>
 
                         <div className="pt-1.5">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handlePostular(chamba.id); }}
-                            disabled={postulandoId === chamba.id}
-                            className={`liftable w-full rounded-full px-5 py-2 text-sm font-semibold text-white sm:w-auto ${
-                              postulandoId === chamba.id
-                                ? 'cursor-not-allowed bg-gray-400'
-                                : 'bg-blue-500 hover:bg-blue-600'
-                            }`}
-                          >
-                            {postulandoId === chamba.id ? 'Enviando...' : 'Postular'}
-                          </button>
+                          {chamba.empleador_id === userId ? (
+                            <p className="inline-flex rounded-full bg-gray-300 px-5 py-2 text-sm font-bold text-gray-600">
+                              Publicación propia
+                            </p>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handlePostular(chamba.id); }}
+                              disabled={postulandoId === chamba.id}
+                              className={`liftable w-full rounded-full px-5 py-2 text-sm font-semibold text-white sm:w-auto ${
+                                postulandoId === chamba.id
+                                  ? 'cursor-not-allowed bg-gray-400'
+                                  : 'bg-blue-500 hover:bg-blue-600'
+                              }`}
+                            >
+                              {postulandoId === chamba.id ? 'Enviando...' : 'Postular'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
