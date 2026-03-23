@@ -50,6 +50,12 @@ export default async function PerfilPage() {
     .eq('user_id', userId)
     .maybeSingle();
 
+  const { data: cuentaBancariaUsuario } = await supabase
+    .from('cuentas_bancarias_usuarios')
+    .select('banco, tipo_cuenta, numero_cuenta, titular_nombre, titular_rut, email_pago')
+    .eq('user_id', userId)
+    .maybeSingle();
+
   let { data: valoracionesRaw, error: valoracionesRawError } = await supabase
     .from('valoraciones')
     .select('estrellas, comentario, emisor_id')
@@ -246,6 +252,14 @@ export default async function PerfilPage() {
             comunaNombre: direccion.comuna_nombre ?? '',
             regionId: direccion.region_id ?? '',
             comunaId: direccion.comuna_id ?? '',
+          }}
+          cuentaBancaria={{
+            banco: cuentaBancariaUsuario?.banco ?? '',
+            tipoCuenta: cuentaBancariaUsuario?.tipo_cuenta ?? '',
+            numeroCuenta: cuentaBancariaUsuario?.numero_cuenta ?? '',
+            titularNombre: cuentaBancariaUsuario?.titular_nombre ?? '',
+            titularRut: cuentaBancariaUsuario?.titular_rut ?? '',
+            emailPago: cuentaBancariaUsuario?.email_pago ?? '',
           }}
           valoraciones={valoraciones}
           valoracionesRealizadas={valoracionesRealizadas}

@@ -52,6 +52,14 @@ interface ActiveProfileViewProps {
     comunaId?: string;
     regionId?: string;
   };
+  cuentaBancaria: {
+    banco: string;
+    tipoCuenta: string;
+    numeroCuenta: string;
+    titularNombre: string;
+    titularRut: string;
+    emailPago?: string;
+  };
   valoraciones: {
     estrellas: number;
     comentario: string | null;
@@ -81,6 +89,12 @@ interface ProfileFormState {
   regionNombre: string;
   comunaId: string;
   regionId: string;
+  banco: string;
+  tipoCuenta: string;
+  numeroCuenta: string;
+  titularNombre: string;
+  titularRut: string;
+  emailPago: string;
 }
 
 type DateParts = {
@@ -198,6 +212,7 @@ export default function ActiveProfileView({
   fechaNacimiento,
   memberSince,
   direccion,
+  cuentaBancaria,
   valoraciones,
   valoracionesRealizadas,
   activePosts,
@@ -229,6 +244,12 @@ export default function ActiveProfileView({
     regionNombre: resolveRegionName(initialRegionId, direccion.regionNombre),
     comunaId: initialCommuneId,
     regionId: initialRegionId,
+    banco: cuentaBancaria.banco,
+    tipoCuenta: cuentaBancaria.tipoCuenta,
+    numeroCuenta: cuentaBancaria.numeroCuenta,
+    titularNombre: cuentaBancaria.titularNombre,
+    titularRut: cuentaBancaria.titularRut,
+    emailPago: cuentaBancaria.emailPago ?? '',
   });
   const [editForm, setEditForm] = useState<ProfileFormState>(profileData);
   const currentFullName =
@@ -250,6 +271,12 @@ export default function ActiveProfileView({
       { label: 'Número', value: profileData.numero || 'Aún no registrado' },
       { label: 'Comuna', value: profileData.comunaNombre || 'Aún no registrada' },
       { label: 'Región', value: profileData.regionNombre || 'Aún no registrada' },
+      { label: 'Banco', value: profileData.banco || 'Aún no registrado' },
+      { label: 'Tipo de cuenta', value: profileData.tipoCuenta || 'Aún no registrado' },
+      { label: 'N° de cuenta', value: profileData.numeroCuenta || 'Aún no registrado' },
+      { label: 'Titular', value: profileData.titularNombre || 'Aún no registrado' },
+      { label: 'RUT titular', value: profileData.titularRut || 'Aún no registrado' },
+      { label: 'Correo de pagos', value: profileData.emailPago || 'Aún no registrado' },
     ],
     [memberSince, profileData]
   );
@@ -460,6 +487,14 @@ export default function ActiveProfileView({
             comunaId: editForm.comunaId,
             comunaNombre: editForm.comunaNombre,
           },
+          cuentaBancaria: {
+            banco: editForm.banco,
+            tipoCuenta: editForm.tipoCuenta,
+            numeroCuenta: editForm.numeroCuenta,
+            titularNombre: editForm.titularNombre,
+            titularRut: editForm.titularRut,
+            emailPago: editForm.emailPago,
+          },
         }),
       });
 
@@ -614,6 +649,57 @@ export default function ActiveProfileView({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={editForm.banco}
+                    onChange={(event) => handleEditFieldChange('banco', event.target.value)}
+                    placeholder="Banco"
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <select
+                    value={editForm.tipoCuenta}
+                    onChange={(event) => handleEditFieldChange('tipoCuenta', event.target.value)}
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  >
+                    <option value="">Tipo de cuenta</option>
+                    <option value="RUT">Cuenta RUT</option>
+                    <option value="CORRIENTE">Cuenta Corriente</option>
+                    <option value="VISTA">Cuenta Vista</option>
+                    <option value="AHORRO">Cuenta Ahorro</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={editForm.numeroCuenta}
+                    onChange={(event) => handleEditFieldChange('numeroCuenta', event.target.value)}
+                    placeholder="Número de cuenta"
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <input
+                    value={editForm.titularNombre}
+                    onChange={(event) => handleEditFieldChange('titularNombre', event.target.value)}
+                    placeholder="Nombre titular"
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={editForm.titularRut}
+                    onChange={(event) => handleEditFieldChange('titularRut', event.target.value)}
+                    placeholder="RUT titular"
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <input
+                    type="email"
+                    value={editForm.emailPago}
+                    onChange={(event) => handleEditFieldChange('emailPago', event.target.value)}
+                    placeholder="Correo para pagos"
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
                 </div>
 
                 {errorMsg ? <p className="text-xs font-semibold text-red-600">{errorMsg}</p> : null}

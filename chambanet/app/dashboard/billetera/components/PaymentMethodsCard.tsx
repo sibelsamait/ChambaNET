@@ -155,6 +155,11 @@ export default function PaymentMethodsCard() {
       return;
     }
 
+    if (docType.trim().toUpperCase() !== 'RUT') {
+      setError('Solo se permite registrar tarjetas con identificación RUT del usuario.');
+      return;
+    }
+
     const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
     if (!publicKey) {
       setError('Falta NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY en el entorno.');
@@ -191,6 +196,8 @@ export default function PaymentMethodsCard() {
           tipo: type,
           alias: alias.trim(),
           token: tokenResponse.id,
+          identificationType: docType.trim().toUpperCase(),
+          identificationNumber: docNumber.trim(),
         }),
       });
       const data = await res.json();
@@ -400,7 +407,6 @@ export default function PaymentMethodsCard() {
                   className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="RUT">RUT</option>
-                  <option value="DNI">DNI</option>
                 </select>
               </label>
               <label className="text-sm font-semibold text-gray-700">

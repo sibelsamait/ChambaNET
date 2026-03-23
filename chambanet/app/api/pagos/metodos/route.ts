@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase';
+import { normalizeRut } from '@/lib/supportAuth';
 import {
   createMercadoPagoCard,
   getOrCreateMercadoPagoCustomer,
@@ -10,6 +11,8 @@ type MetodoPagoInsert = {
   tipo: 'CARD';
   alias: string;
   token: string;
+  identificationType?: string;
+  identificationNumber?: string;
 };
 
 async function getAuthContext() {
@@ -75,7 +78,7 @@ export async function POST(request: Request) {
 
     const { data: perfil } = await auth.supabase
       .from('usuarios')
-      .select('email')
+      .select('email, rut')
       .eq('id', auth.userId)
       .maybeSingle();
 
@@ -84,6 +87,34 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'No se encontró email de usuario para vincular con Mercado Pago.' },
         { status: 409 }
+      );
+    }
+
+    const userRut = normalizeRut(perfil?.rut || '');
+    if (!userRut) {
+      return NextResponse.json(
+        { error: 'Tu perfil no tiene RUT válido para registrar tarjetas.' },
+        { status: 409 }
+      );
+    }
+
+    const identificationType = String(body.identificationType || '').trim().toUpperCase();
+    const identificationNumber = normalizeRut(body.identificationNumber || '');
+
+    if (identificationType !== 'RUT' || !identificationNumber) {
+      return NextResponse.json(
+        { error: 'Debes identificar la tarjeta con RUT válido del usuario.' },
+        { status: 400 }
+      );
+    }
+
+    if (identificationNumber !== userRut) {
+      return NextResponse.json(
+        {
+          error:
+            'El RUT usado para registrar la tarjeta debe coincidir con el RUT del usuario autenticado.',
+        },
+        { status: 403 }
       );
     }
 
