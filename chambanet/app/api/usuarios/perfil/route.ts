@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabase } from '../../../../lib/supabase';
+import { normalizarFechaISO } from '../../../../utils/validations';
 
 type DireccionPayload = {
   calle?: string;
@@ -49,6 +50,7 @@ export async function PATCH(request: Request) {
     const email = String(body?.email || '').trim().toLowerCase();
     const telefono = String(body?.telefono || '').trim();
     const fechaNacimiento = String(body?.fechaNacimiento || '').trim();
+    const fechaNacimientoNormalizada = normalizarFechaISO(fechaNacimiento);
     const direccion = parseDireccion(body?.direccion);
 
     if (!nombres || !apellidoPaterno || !apellidoMaterno || !email || !fechaNacimiento) {
@@ -63,9 +65,11 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'El formato del correo electrónico es inválido.' }, { status: 400 });
     }
 
-    const fechaNacimientoDate = new Date(fechaNacimiento);
-    if (Number.isNaN(fechaNacimientoDate.getTime())) {
-      return NextResponse.json({ error: 'La fecha de nacimiento no es válida.' }, { status: 400 });
+    if (!fechaNacimientoNormalizada) {
+      return NextResponse.json(
+        { error: 'La fecha de nacimiento debe tener formato YYYY-MM-DD y ser válida.' },
+        { status: 400 }
+      );
     }
 
     if (!direccion.calle || !direccion.numero || !direccion.regionNombre || !direccion.comunaNombre) {
@@ -80,7 +84,7 @@ export async function PATCH(request: Request) {
         apellido_materno: apellidoMaterno,
         email,
         telefono: telefono || null,
-        fecha_nacimiento: fechaNacimiento,
+        fecha_nacimiento: fechaNacimientoNormalizada,
         direccion_completa: {
           calle: direccion.calle,
           numero: direccion.numero,

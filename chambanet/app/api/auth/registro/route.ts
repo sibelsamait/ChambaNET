@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { validarRut, calcularBloqueoEdad } from '../../../../utils/validations';
+import {
+  validarRut,
+  calcularBloqueoEdad,
+  normalizarFechaISO,
+  formatearFechaISODesdeDateLocal,
+} from '../../../../utils/validations';
 import { supabase } from '../../../../lib/supabase';
 
 function normalizarRut(rut: string) {
@@ -28,6 +33,7 @@ export async function POST(request: Request) {
     const apellidoMaternoLimpio = String(apellidoMaterno || '').trim();
     const passwordTexto = String(password || '');
     const fechaNacimientoTexto = String(fechaNacimiento || '').trim();
+    const fechaNacimientoNormalizada = normalizarFechaISO(fechaNacimientoTexto);
 
     if (
       !rutNormalizado ||
@@ -51,10 +57,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const fechaNacimientoDate = new Date(fechaNacimientoTexto);
-    if (Number.isNaN(fechaNacimientoDate.getTime())) {
+    if (!fechaNacimientoNormalizada) {
       return NextResponse.json(
-        { error: 'La fecha de nacimiento no es válida.' },
+        { error: 'La fecha de nacimiento debe tener formato YYYY-MM-DD y ser válida.' },
         { status: 400 }
       );
     }
@@ -95,7 +100,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const bloqueadoHasta = calcularBloqueoEdad(fechaNacimientoTexto);
+    const bloqueadoHasta = calcularBloqueoEdad(fechaNacimientoNormalizada);
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: emailNormalizado,
@@ -117,7 +122,7 @@ export async function POST(request: Request) {
           apellido_paterno: apellidoPaternoLimpio,
           apellido_materno: apellidoMaternoLimpio,
           telefono: String(telefono || '').trim() || null,
-          fecha_nacimiento: fechaNacimientoTexto,
+          fecha_nacimiento: fechaNacimientoNormalizada,
           direccion_completa: {
             calle,
             numero,
@@ -136,7 +141,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       mensaje: 'Usuario registrado con éxito',
-      bloqueado: bloqueadoHasta ? `Cuenta bloqueada hasta ${bloqueadoHasta.toISOString().split('T')[0]} por ser menor de edad.` : false
+      bloqueado: bloqueadoHasta
+        ? `Cuenta bloqueada hasta ${formatearFechaISODesdeDateLocal(bloqueadoHasta)} por ser menor de edad.`
+        : false
     }, { status: 201 });
 
   } catch {

@@ -39,6 +39,56 @@ export const validarRut = (rut: string): boolean => {
   return dvFinal === dvIngresado;
 };
 
+const DATE_ONLY_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+type DateOnlyParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+function parseDateOnlyParts(value: string): DateOnlyParts | null {
+  const trimmed = String(value || '').trim();
+  const match = trimmed.match(DATE_ONLY_REGEX);
+
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    Number.isNaN(utcDate.getTime()) ||
+    utcDate.getUTCFullYear() !== year ||
+    utcDate.getUTCMonth() + 1 !== month ||
+    utcDate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function formatDateOnly(parts: DateOnlyParts): string {
+  const month = String(parts.month).padStart(2, '0');
+  const day = String(parts.day).padStart(2, '0');
+  return `${parts.year}-${month}-${day}`;
+}
+
+export const normalizarFechaISO = (value: string): string | null => {
+  const parts = parseDateOnlyParts(value);
+  if (!parts) return null;
+  return formatDateOnly(parts);
+};
+
+export const formatearFechaISODesdeDateLocal = (value: Date): string => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 
 /**
  * Validación de mayoría de edad.
@@ -46,8 +96,11 @@ export const validarRut = (rut: string): boolean => {
  * Retorna null si es mayor de edad, o la Fecha en la que cumple 18 años si es menor.
  */
 export const calcularBloqueoEdad = (fechaNacimiento: string): Date | null => {
+  const parts = parseDateOnlyParts(fechaNacimiento);
+  if (!parts) return null;
+
   const hoy = new Date(); // Sysdate actual
-  const nacimiento = new Date(fechaNacimiento);
+  const nacimiento = new Date(parts.year, parts.month - 1, parts.day);
   
   let edad = hoy.getFullYear() - nacimiento.getFullYear();
   const mes = hoy.getMonth() - nacimiento.getMonth();
@@ -60,9 +113,7 @@ export const calcularBloqueoEdad = (fechaNacimiento: string): Date | null => {
 
   // Si tiene menos de 18, calculamos cuándo exactamente cumple los 18 para el bloqueo temporal
   if (edad < 18) {
-     const fechaDesbloqueo = new Date(nacimiento);
-     fechaDesbloqueo.setFullYear(nacimiento.getFullYear() + 18);
-     return fechaDesbloqueo;
+     return new Date(parts.year + 18, parts.month - 1, parts.day);
   }
 
   // Retorna null si no hay bloqueo (es mayor o igual a 18 años)

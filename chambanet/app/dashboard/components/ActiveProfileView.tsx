@@ -75,22 +75,63 @@ interface ProfileFormState {
   regionId: string;
 }
 
+type DateParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+function parseDateOnly(rawValue?: string | null): DateParts | null {
+  if (!rawValue) return null;
+
+  const normalized = String(rawValue).trim();
+  if (!normalized) return null;
+
+  const dateOnlyMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dateOnlyMatch) {
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]);
+    const day = Number(dateOnlyMatch[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      Number.isNaN(date.getTime()) ||
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() + 1 !== month ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+
+    return { year, month, day };
+  }
+
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
 function formatDateHuman(rawValue?: string | null) {
-  if (!rawValue) return 'Aún no registrada';
-  const date = new Date(rawValue);
-  if (Number.isNaN(date.getTime())) return 'Aún no registrada';
-  return new Intl.DateTimeFormat('es-CL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
+  const parsed = parseDateOnly(rawValue);
+  if (!parsed) return 'Aún no registrada';
+
+  const day = String(parsed.day).padStart(2, '0');
+  const month = String(parsed.month).padStart(2, '0');
+  return `${day}/${month}/${parsed.year}`;
 }
 
 function toDateInputValue(rawValue?: string | null) {
-  if (!rawValue) return '';
-  const date = new Date(rawValue);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
+  const parsed = parseDateOnly(rawValue);
+  if (!parsed) return '';
+
+  const month = String(parsed.month).padStart(2, '0');
+  const day = String(parsed.day).padStart(2, '0');
+  return `${parsed.year}-${month}-${day}`;
 }
 
 function normalizeText(value?: string | null) {
