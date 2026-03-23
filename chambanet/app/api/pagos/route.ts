@@ -326,15 +326,23 @@ export async function GET(request: Request) {
 /**
  * Verifica si el usuario es admin/soporte
  */
-function esAdminSoporte(email?: string | null, rut?: string | null): boolean {
-  const ADMIN_EMAILS = new Set(['soporte.chambanet@gmail.com']);
-  const ADMIN_RUTS = new Set(['00000000-0']);
+function esAdminSoporte(_email?: string | null, rut?: string | null): boolean {
+  const ADMIN_RUTS = new Set(
+    String(process.env.SUPPORT_ADMIN_RUTS || '00000000-0')
+      .split(',')
+      .map((v) =>
+        String(v || '')
+          .replace(/\./g, '')
+          .trim()
+          .toUpperCase()
+      )
+      .filter(Boolean)
+  );
 
-  const normalizedEmail = String(email || '').trim().toLowerCase();
   const normalizedRut = String(rut || '')
     .replace(/\./g, '')
     .trim()
     .toUpperCase();
 
-  return ADMIN_EMAILS.has(normalizedEmail) || ADMIN_RUTS.has(normalizedRut);
+  return ADMIN_RUTS.has(normalizedRut);
 }

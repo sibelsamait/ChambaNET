@@ -1,8 +1,12 @@
 import { cookies } from 'next/headers';
 import { supabase } from './supabase';
 
-const SUPPORT_ADMIN_EMAILS = new Set(['soporte.chambanet@gmail.com']);
-const SUPPORT_ADMIN_RUTS = new Set(['00000000-0']);
+const SUPPORT_ADMIN_RUTS = new Set(
+  String(process.env.SUPPORT_ADMIN_RUTS || '00000000-0')
+    .split(',')
+    .map((v) => normalizeRut(v))
+    .filter(Boolean)
+);
 
 const COMPANY_OWNER_EMAILS = new Set(
   String(process.env.COMPANY_OWNER_EMAILS || 'soporte.chambanet@gmail.com')
@@ -26,9 +30,8 @@ export function normalizeRut(value?: string | null): string {
 }
 
 export function isSupportAdminUser(email?: string | null, rut?: string | null): boolean {
-  const normalizedEmail = String(email || '').trim().toLowerCase();
   const normalizedRut = normalizeRut(rut);
-  return SUPPORT_ADMIN_EMAILS.has(normalizedEmail) || SUPPORT_ADMIN_RUTS.has(normalizedRut);
+  return SUPPORT_ADMIN_RUTS.has(normalizedRut);
 }
 
 export function isCompanyOwnerUser(email?: string | null, rut?: string | null): boolean {
