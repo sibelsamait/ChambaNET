@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Avatar from './Avatar';
 
@@ -33,8 +33,56 @@ interface ActiveProfileViewProps {
   ratingText: string;
   initialImageUrl?: string | null;
   rut?: string | null;
+  nombres: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  email: string;
+  telefono?: string | null;
+  fechaNacimiento?: string | null;
+  memberSince?: string | null;
+  direccion: {
+    calle: string;
+    numero: string;
+    comunaNombre: string;
+    regionNombre: string;
+    comunaId?: string;
+    regionId?: string;
+  };
   activePosts: number;
   completedPosts: number;
+}
+
+interface ProfileFormState {
+  nombres: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  email: string;
+  telefono: string;
+  fechaNacimiento: string;
+  calle: string;
+  numero: string;
+  comunaNombre: string;
+  regionNombre: string;
+  comunaId: string;
+  regionId: string;
+}
+
+function formatDateHuman(rawValue?: string | null) {
+  if (!rawValue) return 'Aún no registrada';
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) return 'Aún no registrada';
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+function toDateInputValue(rawValue?: string | null) {
+  if (!rawValue) return '';
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
 }
 
 export default function ActiveProfileView({
@@ -42,6 +90,14 @@ export default function ActiveProfileView({
   ratingText,
   initialImageUrl,
   rut,
+  nombres,
+  apellidoPaterno,
+  apellidoMaterno,
+  email,
+  telefono,
+  fechaNacimiento,
+  memberSince,
+  direccion,
   activePosts,
   completedPosts,
 }: ActiveProfileViewProps) {
@@ -52,18 +108,43 @@ export default function ActiveProfileView({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const profileFields = [
-    { label: 'Fecha de nacimiento', value: 'Aún no registrada' },
-    { label: 'Miembro desde', value: 'Aún no registrado' },
-    { label: 'Correo electrónico', value: 'Aún no registrado' },
-    { label: 'Teléfono', value: 'Aún no registrado' },
-    { label: 'Calle', value: 'Aún no registrada' },
-    { label: 'Número', value: 'Aún no registrado' },
-    { label: 'Comuna', value: 'Aún no registrada' },
-    { label: 'Región', value: 'Aún no registrada' },
-  ];
+  const [profileData, setProfileData] = useState<ProfileFormState>({
+    nombres,
+    apellidoPaterno,
+    apellidoMaterno,
+    email,
+    telefono: telefono ?? '',
+    fechaNacimiento: toDateInputValue(fechaNacimiento),
+    calle: direccion.calle,
+    numero: direccion.numero,
+    comunaNombre: direccion.comunaNombre,
+    regionNombre: direccion.regionNombre,
+    comunaId: direccion.comunaId ?? '',
+    regionId: direccion.regionId ?? '',
+  });
+  const [editForm, setEditForm] = useState<ProfileFormState>(profileData);
+  const currentFullName =
+    `${profileData.nombres} ${profileData.apellidoPaterno} ${profileData.apellidoMaterno}`
+      .replace(/\s+/g, ' ')
+      .trim() || fullName;
+
+  const profileFields = useMemo(
+    () => [
+      { label: 'Fecha de nacimiento', value: formatDateHuman(profileData.fechaNacimiento) },
+      { label: 'Miembro desde', value: formatDateHuman(memberSince) },
+      { label: 'Correo electrónico', value: profileData.email || 'Aún no registrado' },
+      { label: 'Teléfono', value: profileData.telefono || 'Aún no registrado' },
+      { label: 'Calle', value: profileData.calle || 'Aún no registrada' },
+      { label: 'Número', value: profileData.numero || 'Aún no registrado' },
+      { label: 'Comuna', value: profileData.comunaNombre || 'Aún no registrada' },
+      { label: 'Región', value: profileData.regionNombre || 'Aún no registrada' },
+    ],
+    [memberSince, profileData]
+  );
   const reviewCards = [
     { quote: 'Excelente paga', author: 'Paulo I.' },
     { quote: 'Buena colación', author: 'Barto J.' },
@@ -196,8 +277,213 @@ export default function ActiveProfileView({
     }
   };
 
+  const handleOpenEditModal = () => {
+    setEditForm(profileData);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditForm(profileData);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+  };
+
+  const handleEditFieldChange = (
+    field: keyof ProfileFormState,
+    value: string
+  ) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    setIsSavingProfile(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const response = await fetch('/api/usuarios/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombres: editForm.nombres,
+          apellidoPaterno: editForm.apellidoPaterno,
+          apellidoMaterno: editForm.apellidoMaterno,
+          email: editForm.email,
+          telefono: editForm.telefono,
+          fechaNacimiento: editForm.fechaNacimiento,
+          direccion: {
+            calle: editForm.calle,
+            numero: editForm.numero,
+            regionId: editForm.regionId,
+            regionNombre: editForm.regionNombre,
+            comunaId: editForm.comunaId,
+            comunaNombre: editForm.comunaNombre,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudo actualizar el perfil.');
+      }
+
+      setProfileData(editForm);
+      setSuccessMsg('Información de perfil actualizada.');
+      setIsEditModalOpen(false);
+      router.refresh();
+    } catch (error: unknown) {
+      setErrorMsg(error instanceof Error ? error.message : 'No se pudo actualizar el perfil.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   return (
     <>
+      {isEditModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6"
+          onClick={handleCloseEditModal}
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-2xl shadow-[0_16px_48px_rgba(30,64,175,0.40)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="rounded-t-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-extrabold text-black">Editar información</h3>
+                  <p className="mt-1 text-sm font-semibold text-gray-700">
+                    Actualiza los datos de tu perfil registrados en la plataforma.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  className="shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-black/10 hover:text-gray-700"
+                  aria-label="Cerrar"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProfile} className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={editForm.nombres}
+                    onChange={(event) => handleEditFieldChange('nombres', event.target.value)}
+                    placeholder="Nombres"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <input
+                    value={editForm.apellidoPaterno}
+                    onChange={(event) => handleEditFieldChange('apellidoPaterno', event.target.value)}
+                    placeholder="Apellido paterno"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={editForm.apellidoMaterno}
+                    onChange={(event) => handleEditFieldChange('apellidoMaterno', event.target.value)}
+                    placeholder="Apellido materno"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <input
+                    type="date"
+                    value={editForm.fechaNacimiento}
+                    onChange={(event) => handleEditFieldChange('fechaNacimiento', event.target.value)}
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(event) => handleEditFieldChange('email', event.target.value)}
+                    placeholder="Correo electrónico"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <input
+                    type="tel"
+                    value={editForm.telefono}
+                    onChange={(event) => handleEditFieldChange('telefono', event.target.value)}
+                    placeholder="Teléfono"
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={editForm.calle}
+                    onChange={(event) => handleEditFieldChange('calle', event.target.value)}
+                    placeholder="Calle"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <input
+                    value={editForm.numero}
+                    onChange={(event) => handleEditFieldChange('numero', event.target.value)}
+                    placeholder="Número"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input
+                    value={editForm.comunaNombre}
+                    onChange={(event) => handleEditFieldChange('comunaNombre', event.target.value)}
+                    placeholder="Comuna"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                  <input
+                    value={editForm.regionNombre}
+                    onChange={(event) => handleEditFieldChange('regionNombre', event.target.value)}
+                    placeholder="Región"
+                    required
+                    className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
+                  />
+                </div>
+
+                {errorMsg ? <p className="text-xs font-semibold text-red-600">{errorMsg}</p> : null}
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleCloseEditModal}
+                    className="liftable flex-1 rounded-xl border border-gray-300 bg-white p-3 text-center text-sm font-extrabold text-gray-700 transition hover:bg-gray-100"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="liftable flex-1 rounded-xl bg-blue-500 p-3 text-center text-sm font-extrabold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                  >
+                    {isSavingProfile ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isImageModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6"
@@ -228,7 +514,7 @@ export default function ActiveProfileView({
               <div className="flex flex-col items-center gap-4">
                 <Avatar
                   imageUrl={currentImageUrl}
-                  name={fullName}
+                  name={currentFullName}
                   alt="Vista previa de la foto de perfil"
                   className="h-28 w-28 rounded-full border-4 border-blue-200 object-cover"
                   fallbackClassName="text-3xl"
@@ -287,7 +573,7 @@ export default function ActiveProfileView({
                   <div className="relative shrink-0">
                     <Avatar
                       imageUrl={currentImageUrl}
-                      name={fullName}
+                      name={currentFullName}
                       alt="Foto del perfil activo"
                       className="h-24 w-24 rounded-full border-4 border-blue-200 object-cover sm:h-28 sm:w-28"
                       fallbackClassName="text-2xl"
@@ -311,7 +597,7 @@ export default function ActiveProfileView({
 
                   <div className="min-w-0 text-white">
                     {rut ? <p className="text-2xl font-extrabold leading-tight sm:text-3xl">{rut}</p> : null}
-                    <p className="mt-1 text-lg font-bold sm:text-2xl">{fullName || 'Usuario'}</p>
+                    <p className="mt-1 text-lg font-bold sm:text-2xl">{currentFullName || 'Usuario'}</p>
                     <p className="text-base font-semibold text-white/90">Perfil activo</p>
                     <p className="mt-3 text-xs font-semibold text-white/85 sm:text-sm">
                       Toca el icono en la foto para actualizar tu imagen de perfil.
@@ -340,6 +626,7 @@ export default function ActiveProfileView({
                 </div>
                 <button
                   type="button"
+                  onClick={handleOpenEditModal}
                   className="liftable rounded-full bg-[#f0e3aa] px-5 py-2 text-sm font-bold text-gray-900 transition hover:bg-[#ecdfa0]"
                 >
                   Editar información

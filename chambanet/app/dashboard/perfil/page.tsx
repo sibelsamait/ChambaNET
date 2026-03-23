@@ -4,6 +4,20 @@ import { redirect } from 'next/navigation';
 import Sidebar from '../components/Sidebar';
 import ActiveProfileView from '../components/ActiveProfileView';
 
+type DireccionPerfil = {
+  calle?: string;
+  numero?: string;
+  region_nombre?: string;
+  comuna_nombre?: string;
+  region_id?: string;
+  comuna_id?: string;
+};
+
+function parseDireccionPerfil(raw: unknown): DireccionPerfil {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  return raw as DireccionPerfil;
+}
+
 export default async function PerfilPage() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get('sb-access-token')?.value;
@@ -23,7 +37,7 @@ export default async function PerfilPage() {
 
   const { data: perfilUsuario } = await supabase
     .from('usuarios')
-    .select('nombres, apellido_paterno, apellido_materno, rut, promedio_valoracion')
+    .select('nombres, apellido_paterno, apellido_materno, rut, promedio_valoracion, email, telefono, fecha_nacimiento, direccion_completa')
     .eq('id', userId)
     .single();
 
@@ -60,6 +74,9 @@ export default async function PerfilPage() {
       ? perfilUsuario.promedio_valoracion.toFixed(1).replace('.', ',')
       : 'Sin valoración';
 
+  const direccion = parseDireccionPerfil(perfilUsuario?.direccion_completa);
+  const memberSince = authData.user.created_at ?? null;
+
   return (
     <div className="flex min-h-screen flex-col bg-blue-500 text-gray-900 font-sans lg:h-screen lg:flex-row lg:overflow-hidden">
       <Sidebar
@@ -74,6 +91,21 @@ export default async function PerfilPage() {
           ratingText={ratingTexto}
           initialImageUrl={imagenUsuario?.image_data_url}
           rut={perfilUsuario?.rut}
+          nombres={perfilUsuario?.nombres ?? ''}
+          apellidoPaterno={perfilUsuario?.apellido_paterno ?? ''}
+          apellidoMaterno={perfilUsuario?.apellido_materno ?? ''}
+          email={perfilUsuario?.email ?? ''}
+          telefono={perfilUsuario?.telefono ?? null}
+          fechaNacimiento={perfilUsuario?.fecha_nacimiento ?? null}
+          memberSince={memberSince}
+          direccion={{
+            calle: direccion.calle ?? '',
+            numero: direccion.numero ?? '',
+            regionNombre: direccion.region_nombre ?? '',
+            comunaNombre: direccion.comuna_nombre ?? '',
+            regionId: direccion.region_id ?? '',
+            comunaId: direccion.comuna_id ?? '',
+          }}
           activePosts={activePosts ?? 0}
           completedPosts={completedPosts ?? 0}
         />
