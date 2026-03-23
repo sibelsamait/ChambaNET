@@ -9,11 +9,6 @@ type Conversacion = {
   chambaTitulo: string;
   otroUsuarioId: string;
   otroUsuarioNombre: string;
-  otroUsuarioRut: string | null;
-  otroUsuarioEmail: string | null;
-  otroUsuarioTelefono: string | null;
-  otroUsuarioFechaNacimiento: string | null;
-  otroUsuarioDireccion: string | null;
   otroUsuarioImagenUrl: string | null;
   ultimoMensaje: string;
   ultimoMensajeEn: string | null;
@@ -46,18 +41,6 @@ function formatFechaCorta(fechaRaw: string | null) {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  }).format(fecha);
-}
-
-function formatFechaSolo(fechaRaw: string | null) {
-  if (!fechaRaw) return 'No registrada';
-  const fecha = new Date(fechaRaw);
-  if (Number.isNaN(fecha.getTime())) return 'No registrada';
-
-  return new Intl.DateTimeFormat('es-CL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
   }).format(fecha);
 }
 
@@ -245,27 +228,9 @@ export default function ChatPanel({ userId }: ChatPanelProps) {
           ) : cargandoMensajes ? (
             <p className="text-xs font-semibold text-gray-500">Cargando mensajes...</p>
           ) : mensajes.length === 0 ? (
-            <>
-              <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[11px] text-blue-900">
-                <p className="font-extrabold uppercase tracking-wide">Datos personales de tu contacto</p>
-                <p className="mt-1">RUT: <span className="font-semibold">{conversacionActiva.otroUsuarioRut || 'No registrado'}</span></p>
-                <p>Email: <span className="font-semibold">{conversacionActiva.otroUsuarioEmail || 'No registrado'}</span></p>
-                <p>Teléfono: <span className="font-semibold">{conversacionActiva.otroUsuarioTelefono || 'No registrado'}</span></p>
-                <p>Nacimiento: <span className="font-semibold">{formatFechaSolo(conversacionActiva.otroUsuarioFechaNacimiento)}</span></p>
-                <p>Dirección: <span className="font-semibold">{conversacionActiva.otroUsuarioDireccion || 'No registrada'}</span></p>
-              </div>
-              <p className="text-xs font-semibold text-gray-500">Aún no hay mensajes en esta conversación.</p>
-            </>
+            <p className="text-xs font-semibold text-gray-500">Aún no hay mensajes en esta conversación.</p>
           ) : (
             <div className="space-y-2">
-              <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[11px] text-blue-900">
-                <p className="font-extrabold uppercase tracking-wide">Datos personales de tu contacto</p>
-                <p className="mt-1">RUT: <span className="font-semibold">{conversacionActiva.otroUsuarioRut || 'No registrado'}</span></p>
-                <p>Email: <span className="font-semibold">{conversacionActiva.otroUsuarioEmail || 'No registrado'}</span></p>
-                <p>Teléfono: <span className="font-semibold">{conversacionActiva.otroUsuarioTelefono || 'No registrado'}</span></p>
-                <p>Nacimiento: <span className="font-semibold">{formatFechaSolo(conversacionActiva.otroUsuarioFechaNacimiento)}</span></p>
-                <p>Dirección: <span className="font-semibold">{conversacionActiva.otroUsuarioDireccion || 'No registrada'}</span></p>
-              </div>
               {mensajes.map((msg) => {
                 const esMio = msg.remitente_id === userId;
                 return (

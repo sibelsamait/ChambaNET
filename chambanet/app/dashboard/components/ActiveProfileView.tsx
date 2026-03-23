@@ -788,8 +788,8 @@ export default function ActiveProfileView({
 
               <div id="resumen-trabajos" className="mt-5 flex flex-wrap items-center justify-between gap-3 scroll-mt-24">
                 <div className="flex gap-3 text-xs font-bold sm:text-sm">
-                  <span className="rounded-full bg-white/20 px-3 py-1.5">Activas: {activePosts}</span>
-                  <span className="rounded-full bg-white/20 px-3 py-1.5">Completadas: {completedPosts}</span>
+                  <span className="rounded-full bg-white/20 px-3 py-1.5">Publicadas: {activePosts}</span>
+                  <span className="rounded-full bg-white/20 px-3 py-1.5">Trabajadas: {completedPosts}</span>
                 </div>
                 <button
                   type="button"

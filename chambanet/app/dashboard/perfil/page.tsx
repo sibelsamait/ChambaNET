@@ -176,17 +176,28 @@ export default async function PerfilPage() {
       ? valoraciones.reduce((acc, item) => acc + item.estrellas, 0) / valoraciones.length
       : null;
 
-  const { count: activePosts } = await supabase
+  const { count: publishedPosts } = await supabase
     .from('chambas')
     .select('*', { count: 'exact', head: true })
-    .eq('empleador_id', userId)
-    .in('estado', ['PUBLICADA', 'CON_POSTULANTES', 'EN_OBRA', 'ESPERANDO_APROBACION']);
+    .eq('empleador_id', userId);
 
-  const { count: completedPosts } = await supabase
-    .from('chambas')
-    .select('*', { count: 'exact', head: true })
-    .eq('empleador_id', userId)
-    .eq('estado', 'FINALIZADA');
+  const { data: postulacionesAceptadasTrabajador } = await supabase
+    .from('postulaciones')
+    .select('chamba_id')
+    .eq('trabajador_id', userId)
+    .eq('estado', 'ACEPTADA');
+
+  const chambaIdsTrabajador = Array.from(
+    new Set((postulacionesAceptadasTrabajador || []).map((row) => row.chamba_id).filter(Boolean))
+  );
+
+  const { count: workedPosts } = chambaIdsTrabajador.length
+    ? await supabase
+        .from('chambas')
+        .select('*', { count: 'exact', head: true })
+        .in('id', chambaIdsTrabajador)
+        .eq('estado', 'FINALIZADA')
+    : { count: 0 };
 
   const primerNombre = perfilUsuario?.nombres?.trim().split(/\s+/)[0] ?? '';
   const nombreCorto = [primerNombre, perfilUsuario?.apellido_paterno?.trim()].filter(Boolean).join(' ').trim();
@@ -238,8 +249,8 @@ export default async function PerfilPage() {
           }}
           valoraciones={valoraciones}
           valoracionesRealizadas={valoracionesRealizadas}
-          activePosts={activePosts ?? 0}
-          completedPosts={completedPosts ?? 0}
+          activePosts={publishedPosts ?? 0}
+          completedPosts={workedPosts ?? 0}
         />
       </main>
     </div>

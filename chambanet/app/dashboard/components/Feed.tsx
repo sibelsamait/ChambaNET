@@ -1733,18 +1733,6 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                                 />
                                 <div className="flex-1 min-w-0">
                                   <p className="truncate font-extrabold leading-tight">{nombre}</p>
-                                  {p.trabajador.rut && (
-                                    <p className="text-xs text-blue-100">{p.trabajador.rut}</p>
-                                  )}
-                                  {p.trabajador.email && (
-                                    <p className="truncate text-[11px] text-blue-100">{p.trabajador.email}</p>
-                                  )}
-                                  {p.trabajador.telefono && (
-                                    <p className="text-[11px] text-blue-100">{p.trabajador.telefono}</p>
-                                  )}
-                                  <p className="truncate text-[11px] text-blue-100">
-                                    Dirección: {direccionComoTexto(p.trabajador.direccion_completa)}
-                                  </p>
                                   <p className="text-sm font-black">
                                     ★{' '}
                                     {typeof p.trabajador.promedio_valoracion === 'number'
@@ -2265,21 +2253,6 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     <p className="text-sm font-extrabold text-gray-900">
                       {chambaActivaTrabajador.empleador.nombres} {chambaActivaTrabajador.empleador.apellido_paterno}
                     </p>
-                    {chambaActivaTrabajador.empleador.rut ? (
-                      <p className="text-xs font-semibold text-gray-700">{chambaActivaTrabajador.empleador.rut}</p>
-                    ) : null}
-                    {chambaActivaTrabajador.empleador.email ? (
-                      <p className="text-xs font-semibold text-gray-700">{chambaActivaTrabajador.empleador.email}</p>
-                    ) : null}
-                    {chambaActivaTrabajador.empleador.telefono ? (
-                      <p className="text-xs font-semibold text-gray-700">{chambaActivaTrabajador.empleador.telefono}</p>
-                    ) : null}
-                    <p className="text-[11px] text-gray-700">
-                      Nacimiento: {formatFechaSolo(chambaActivaTrabajador.empleador.fecha_nacimiento)}
-                    </p>
-                    <p className="text-[11px] text-gray-700">
-                      Dirección: {direccionComoTexto(chambaActivaTrabajador.empleador.direccion_completa)}
-                    </p>
                     <p className="text-sm font-black text-gray-900">
                       ☆{' '}
                       {typeof chambaActivaTrabajador.empleador.promedio_valoracion === 'number'
@@ -2435,21 +2408,6 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                         {chambaActivaEmpleador.trabajador_activo.nombres} {chambaActivaEmpleador.trabajador_activo.apellido_paterno}
                       </p>
                     </div>
-                    {chambaActivaEmpleador.trabajador_activo.rut ? (
-                      <p className="text-xs font-semibold text-gray-700">{chambaActivaEmpleador.trabajador_activo.rut}</p>
-                    ) : null}
-                    {chambaActivaEmpleador.trabajador_activo.email ? (
-                      <p className="text-xs font-semibold text-gray-700">{chambaActivaEmpleador.trabajador_activo.email}</p>
-                    ) : null}
-                    {chambaActivaEmpleador.trabajador_activo.telefono ? (
-                      <p className="text-xs font-semibold text-gray-700">{chambaActivaEmpleador.trabajador_activo.telefono}</p>
-                    ) : null}
-                    <p className="text-[11px] text-gray-700">
-                      Nacimiento: {formatFechaSolo(chambaActivaEmpleador.trabajador_activo.fecha_nacimiento)}
-                    </p>
-                    <p className="text-[11px] text-gray-700">
-                      Dirección: {direccionComoTexto(chambaActivaEmpleador.trabajador_activo.direccion_completa)}
-                    </p>
                     <button
                       type="button"
                       onClick={() => handleVerPerfilTrabajador(chambaActivaEmpleador.trabajador_activo!.id)}
