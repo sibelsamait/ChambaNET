@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import Sidebar from '@/app/dashboard/components/Sidebar';
 import WalletPanel from './components/WalletPanel';
 import PaymentMethodsCard from './components/PaymentMethodsCard';
+import ReceivingAccountCard from './components/ReceivingAccountCard';
 import { isSupportAdminUser } from '@/lib/supportAuth';
 
 export default async function BilleteraPage() {
@@ -79,6 +80,8 @@ export default async function BilleteraPage() {
         </div>
 
         <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+          <ReceivingAccountCard isSupportAdmin={isSupportAdmin} />
+
           <PaymentMethodsCard />
 
           {/* Saldo Actual */}
