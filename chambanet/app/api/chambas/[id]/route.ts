@@ -220,6 +220,73 @@ export async function GET(request: Request, context: RouteContext) {
       receptorValoracionNombre = `${empleador.nombres ?? ''} ${empleador.apellido_paterno ?? ''}`.trim() || 'Empleador';
     }
 
+    let evidencias: Array<{
+      nombre: string;
+      tamano: number;
+      tipo: string;
+      fecha: string;
+      uploader_id: string | null;
+    }> = [];
+
+    if (userId && (userId === chamba.empleador_id || userId === trabajadorActivoId)) {
+      const evidenciasPrimero = await supabase
+        .from('chamba_evidencias')
+        .select('uploader_id, archivos, creado_en')
+        .eq('chamba_id', chambaId)
+        .order('creado_en', { ascending: false });
+
+      let evidenciasRows: Array<{ uploader_id?: string; archivos?: unknown }> =
+        (evidenciasPrimero.data || []) as Array<{ uploader_id?: string; archivos?: unknown }>;
+      let evidenciasError = evidenciasPrimero.error;
+
+      if (evidenciasError) {
+        const fallback = await supabase
+          .from('chamba_evidencias')
+          .select('uploader_id, archivos, created_at')
+          .eq('chamba_id', chambaId)
+          .order('created_at', { ascending: false });
+
+        evidenciasRows = (fallback.data || []) as Array<{ uploader_id?: string; archivos?: unknown }>;
+        evidenciasError = fallback.error;
+      }
+
+      if (!evidenciasError) {
+        evidencias = evidenciasRows.flatMap((row) => {
+          const archivos = Array.isArray(row.archivos) ? row.archivos : [];
+          return archivos
+            .map((archivo) => {
+              if (!archivo || typeof archivo !== 'object') return null;
+              const safe = archivo as {
+                nombre?: string;
+                tamano?: number;
+                tipo?: string;
+                fecha?: string;
+              };
+              if (!safe.nombre || !safe.fecha) return null;
+
+              return {
+                nombre: String(safe.nombre),
+                tamano: Number(safe.tamano) || 0,
+                tipo: String(safe.tipo || 'application/octet-stream'),
+                fecha: String(safe.fecha),
+                uploader_id: row.uploader_id ?? null,
+              };
+            })
+            .filter(
+              (
+                item
+              ): item is {
+                nombre: string;
+                tamano: number;
+                tipo: string;
+                fecha: string;
+                uploader_id: string | null;
+              } => Boolean(item)
+            );
+        });
+      }
+    }
+
     return NextResponse.json({
       chamba,
       postulantes_count: postulantesCount ?? 0,
@@ -256,6 +323,7 @@ export async function GET(request: Request, context: RouteContext) {
         publicaciones_realizadas: publicacionesCount ?? 0,
         trabajos_completados: trabajosCount ?? 0,
       },
+      evidencias,
       valoraciones,
     });
   } catch {

@@ -145,6 +145,13 @@ interface ChambaDetalleFull {
     trabajos_completados: number;
   };
   valoraciones: { estrellas: number; comentario: string | null; emisor_nombre: string }[];
+  evidencias?: {
+    nombre: string;
+    tamano: number;
+    tipo: string;
+    fecha: string;
+    uploader_id?: string | null;
+  }[];
   postulantes?: PostulanteItem[];
   mi_postulacion_estado?: string | null;
   trabajador_activo?: {
@@ -627,7 +634,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
       setTimeout(() => setDestacadoId(null), 2500);
     } else {
-      setChambaDetalle(item);
+      void handleAbrirDetalle(item.id);
     }
   }, []);
 
@@ -899,17 +906,32 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
         fecha: new Date().toISOString(),
       }));
 
-      const storageKey = `chamba_evidencias_${chambaActivaTrabajador.chamba.id}`;
-      const prevRaw = localStorage.getItem(storageKey);
-      const prevParsed: EvidenciaMeta[] = prevRaw ? JSON.parse(prevRaw) : [];
-      localStorage.setItem(storageKey, JSON.stringify([...prevParsed, ...registros]));
+      const response = await fetch(`/api/chambas/${chambaActivaTrabajador.chamba.id}/evidencias`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evidencias: registros }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudieron registrar las evidencias.');
+      }
 
       evidenciasPreview.forEach((url) => URL.revokeObjectURL(url));
       setEvidenciasAdjuntas([]);
       setEvidenciasPreview([]);
       setMensajeEvidencias('Evidencias registradas correctamente.');
-    } catch {
-      setMensajeEvidencias('No se pudieron registrar las evidencias. Intenta nuevamente.');
+
+      const refetch = await fetch(`/api/chambas/${chambaActivaTrabajador.chamba.id}?userId=${userId}`);
+      if (refetch.ok) {
+        const updated = await refetch.json();
+        setChambaActivaTrabajador(updated);
+        if (modalChambaData?.chamba.id === chambaActivaTrabajador.chamba.id) {
+          setModalChambaData(updated);
+        }
+      }
+    } catch (error: unknown) {
+      setMensajeEvidencias(error instanceof Error ? error.message : 'No se pudieron registrar las evidencias. Intenta nuevamente.');
     } finally {
       setSubiendoEvidencias(false);
     }
@@ -1624,6 +1646,23 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                       ) : null}
                     </div>
                   )}
+
+                  {modalChambaData.evidencias && modalChambaData.evidencias.length > 0 ? (
+                    <div className="mt-4 rounded-xl border border-blue-300 bg-blue-50 p-3">
+                      <p className="text-xs font-extrabold uppercase tracking-wide text-blue-900">Evidencias registradas</p>
+                      <ul className="mt-2 space-y-1.5">
+                        {modalChambaData.evidencias.map((ev, idx) => (
+                          <li key={`${ev.nombre}-${ev.fecha}-${idx}`} className="rounded-lg bg-white px-2.5 py-2 text-xs text-blue-900">
+                            <p className="font-bold">{ev.nombre}</p>
+                            <p className="text-[11px] font-semibold text-blue-700">
+                              {Math.max(1, Math.round(ev.tamano / 1024))} KB · {ev.tipo || 'archivo'}
+                            </p>
+                            <p className="text-[11px] text-blue-700">{formatDateAndTime(ev.fecha).date} {formatDateAndTime(ev.fecha).time}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
 
                   {modalChambaData.chamba.estado === 'FINALIZADA' && (
                     <div className="mt-4 rounded-xl border border-blue-300 bg-blue-50 p-3">
