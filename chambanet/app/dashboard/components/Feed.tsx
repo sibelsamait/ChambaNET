@@ -167,6 +167,10 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [evidenciasPreview, setEvidenciasPreview] = useState<string[]>([]);
   const [subiendoEvidencias, setSubiendoEvidencias] = useState(false);
   const [mensajeEvidencias, setMensajeEvidencias] = useState<string | null>(null);
+  const [chambaActivaEmpleador, setChambaActivaEmpleador] = useState<ChambaDetalleFull | null>(null);
+  const [modalSoporteAbierto, setModalSoporteAbierto] = useState(false);
+  const [soporteMensaje, setSoporteMensaje] = useState('');
+  const [errorSoporte, setErrorSoporte] = useState<string | null>(null);
   const [mensajeContacto, setMensajeContacto] = useState<string | null>(null);
   const [gestionandoCierre, setGestionandoCierre] = useState(false);
   const [mensajeCierre, setMensajeCierre] = useState<string | null>(null);
@@ -271,26 +275,44 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           (item: MiChambaItem) => item.rol === 'postulante' && (item.estado === 'EN_OBRA' || item.estado === 'ESPERANDO_APROBACION')
         );
 
-        if (!activaEnObra) {
+        const activaEmpleador = misChambasUsuario.find(
+          (item: MiChambaItem) =>
+            item.rol === 'empleador' && (item.estado === 'EN_OBRA' || item.estado === 'ESPERANDO_APROBACION')
+        );
+
+        if (!activaEnObra && !activaEmpleador) {
           if (!cancelado) {
             setChambaActivaTrabajador(null);
+            setChambaActivaEmpleador(null);
           }
           return;
         }
 
-        const resDetalle = await fetch(`/api/chambas/${activaEnObra.id}?userId=${userId}`);
-        const dataDetalle = await resDetalle.json();
-
-        if (!resDetalle.ok) {
-          throw new Error(dataDetalle?.error || 'No se pudo cargar el detalle de tu chamba activa.');
-        }
+        const [detalleTrabajador, detalleEmpleador] = await Promise.all([
+          activaEnObra
+            ? fetch(`/api/chambas/${activaEnObra.id}?userId=${userId}`).then(async (res) => {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data?.error || 'No se pudo cargar tu chamba activa de trabajador.');
+                return data as ChambaDetalleFull;
+              })
+            : Promise.resolve(null),
+          activaEmpleador
+            ? fetch(`/api/chambas/${activaEmpleador.id}?userId=${userId}`).then(async (res) => {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data?.error || 'No se pudo cargar tu chamba activa de empleador.');
+                return data as ChambaDetalleFull;
+              })
+            : Promise.resolve(null),
+        ]);
 
         if (!cancelado) {
-          setChambaActivaTrabajador(dataDetalle);
+          setChambaActivaTrabajador(detalleTrabajador);
+          setChambaActivaEmpleador(detalleEmpleador);
         }
       } catch {
         if (!cancelado) {
           setChambaActivaTrabajador(null);
+          setChambaActivaEmpleador(null);
         }
       } finally {
         if (!cancelado) {
@@ -865,6 +887,56 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     }
   };
 
+  const handleCompletarChambaEmpleador = async () => {
+    if (!chambaActivaEmpleador?.chamba.id) return;
+    if (!window.confirm('¿Completar la chamba y efectuar el pago al trabajador?')) return;
+
+    setGestionandoCierre(true);
+    setMensajeCierre(null);
+
+    try {
+      const res = await fetch(`/api/chambas/${chambaActivaEmpleador.chamba.id}/finalizar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'APROBAR_CIERRE' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'No se pudo completar la chamba.');
+
+      const refetch = await fetch(`/api/chambas/${chambaActivaEmpleador.chamba.id}?userId=${userId}`);
+      if (refetch.ok) {
+        const updated = await refetch.json();
+        setChambaActivaEmpleador(updated);
+      }
+
+      setMensajeCierre('Chamba completada y pago efectuado correctamente.');
+      router.refresh();
+    } catch (error: unknown) {
+      setMensajeCierre(error instanceof Error ? error.message : 'No se pudo completar la chamba.');
+    } finally {
+      setGestionandoCierre(false);
+    }
+  };
+
+  const handleContactarSoporte = () => {
+    setSoporteMensaje('');
+    setErrorSoporte(null);
+    setModalSoporteAbierto(true);
+  };
+
+  const handleEnviarSoporte = () => {
+    const texto = soporteMensaje.trim();
+    if (texto.length < 10) {
+      setErrorSoporte('Describe el problema con al menos 10 caracteres.');
+      return;
+    }
+
+    setModalSoporteAbierto(false);
+    setSoporteMensaje('');
+    setErrorSoporte(null);
+    setMensajeCierre('Solicitud enviada a soporte. Te contactaremos pronto para ayudarte con esta chamba.');
+  };
+
   const abrirModalValoracion = () => {
     setValoracionEstrellas(5);
     setValoracionComentario('');
@@ -940,6 +1012,13 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
   const mostrarVistaTrabajadorEnObra = Boolean(
     chambaActivaTrabajador && chambaActivaTrabajador.chamba.empleador_id !== userId
+  );
+
+  const mostrarVistaEmpleadorEnObra = Boolean(
+    !mostrarVistaTrabajadorEnObra &&
+      chambaActivaEmpleador &&
+      chambaActivaEmpleador.chamba.empleador_id === userId &&
+      ['EN_OBRA', 'ESPERANDO_APROBACION'].includes(chambaActivaEmpleador.chamba.estado)
   );
 
   return (
@@ -1108,6 +1187,75 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 }`}
               >
                 {valorando ? 'Enviando...' : 'Enviar valoración'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalSoporteAbierto && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4 py-6"
+          onClick={() => {
+            setModalSoporteAbierto(false);
+            setErrorSoporte(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_16px_48px_rgba(30,64,175,0.45)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-black">Contactar soporte</h3>
+                <p className="mt-1 text-xs font-semibold text-gray-700">
+                  Describe brevemente el problema para que soporte pueda ayudarte con esta chamba en obra.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalSoporteAbierto(false);
+                  setErrorSoporte(null);
+                }}
+                className="rounded-full p-1 text-gray-500 hover:bg-black/10 hover:text-gray-700"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <textarea
+              value={soporteMensaje}
+              onChange={(e) => {
+                setSoporteMensaje(e.target.value);
+                if (errorSoporte) setErrorSoporte(null);
+              }}
+              rows={4}
+              maxLength={500}
+              placeholder="Ejemplo: El trabajador subió evidencia incompleta y necesito revisión antes de completar el pago..."
+              className="w-full resize-none rounded-lg border border-[#c9ba6a] bg-white/80 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
+            />
+
+            {errorSoporte ? <p className="mt-2 text-xs font-semibold text-red-600">{errorSoporte}</p> : null}
+
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setModalSoporteAbierto(false);
+                  setErrorSoporte(null);
+                }}
+                className="liftable flex-1 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-extrabold text-gray-700 hover:bg-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleEnviarSoporte}
+                className="liftable flex-1 rounded-full bg-blue-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-blue-700"
+              >
+                Enviar a soporte
               </button>
             </div>
           </div>
@@ -1656,7 +1804,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
         </div>
       )}
 
-      {!mostrarVistaTrabajadorEnObra && (
+      {!mostrarVistaTrabajadorEnObra && !mostrarVistaEmpleadorEnObra && (
       <div className="h-14 border-b border-blue-300/40 px-3 sm:px-6">
         <div className="mx-auto flex h-full max-w-4xl items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-6">
@@ -1903,6 +2051,90 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     </button>
                   )}
                 </div>
+              )}
+
+              {mensajeCierre ? <p className="mt-2 text-xs font-semibold text-blue-700">{mensajeCierre}</p> : null}
+            </div>
+          </section>
+        ) : mostrarVistaEmpleadorEnObra && chambaActivaEmpleador ? (
+          <section className="mx-auto w-full max-w-4xl rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_12px_40px_rgba(58,82,123,0.30)] sm:p-6">
+            <div className="mb-4 border-b-2 border-dashed border-[#d6c989] pb-4">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Chamba en obra</p>
+              <h2 className="mt-1 text-2xl font-extrabold leading-tight text-black">{chambaActivaEmpleador.chamba.titulo}</h2>
+              <p className="mt-2 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-700">
+                {chambaActivaEmpleador.chamba.estado.replace(/_/g, ' ')}
+              </p>
+            </div>
+
+            <div className="mb-5 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-[#d6c989] bg-white/70 p-4">
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Detalles de la chamba</h3>
+                <p className="mt-2 text-sm font-semibold leading-snug text-gray-800">
+                  {chambaActivaEmpleador.chamba.descripcion || 'Sin descripción disponible.'}
+                </p>
+                <div className="mt-3 space-y-1.5 text-sm font-bold text-gray-900">
+                  <p>💰 CLP$ {chambaActivaEmpleador.chamba.pago_clp.toLocaleString('es-CL')}</p>
+                  {(() => {
+                    const { date, time } = formatDateAndTime(chambaActivaEmpleador.chamba.horario);
+                    return <p>🕒 {date} | {time}</p>;
+                  })()}
+                  <p>📍 {chambaActivaEmpleador.chamba.direccion_texto || 'Ubicación por confirmar'}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#d6c989] bg-white/70 p-4">
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Trabajador activo</h3>
+                {chambaActivaEmpleador.trabajador_activo ? (
+                  <div className="mt-2 space-y-3">
+                    <p className="text-sm font-bold text-gray-900">
+                      {chambaActivaEmpleador.trabajador_activo.nombres} {chambaActivaEmpleador.trabajador_activo.apellido_paterno}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleVerPerfilTrabajador(chambaActivaEmpleador.trabajador_activo!.id)}
+                      className="liftable w-full rounded-full bg-blue-500 px-5 py-2.5 text-sm font-extrabold text-white transition hover:bg-blue-600"
+                    >
+                      Ver perfil del trabajador
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs font-semibold text-gray-600">Aún no hay trabajador activo para esta chamba.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-[#d6c989] bg-white/70 p-4">
+              <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Completar chamba</h3>
+
+              {chambaActivaEmpleador.chamba.estado === 'ESPERANDO_APROBACION' ? (
+                <>
+                  <p className="mt-2 text-xs font-semibold text-gray-700">
+                    El trabajador ya envió su evidencia y solicitó cierre. Puedes contactar a soporte o completar la chamba para efectuar el pago.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleContactarSoporte}
+                      className="liftable rounded-full border border-blue-300 bg-white px-5 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50"
+                    >
+                      Contactar a soporte
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCompletarChambaEmpleador}
+                      disabled={gestionandoCierre}
+                      className={`liftable rounded-full px-5 py-2 text-sm font-bold text-white ${
+                        gestionandoCierre ? 'cursor-not-allowed bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'
+                      }`}
+                    >
+                      {gestionandoCierre ? 'Completando...' : 'Completar chamba (efectuar pago)'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-2 text-xs font-semibold text-gray-700">
+                  Esperando que el trabajador envíe evidencia para habilitar la finalización y pago de esta chamba.
+                </p>
               )}
 
               {mensajeCierre ? <p className="mt-2 text-xs font-semibold text-blue-700">{mensajeCierre}</p> : null}
