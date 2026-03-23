@@ -52,6 +52,29 @@ type MercadoPagoSearchResponse = {
   results?: MercadoPagoPayment[];
 };
 
+type MercadoPagoCustomer = {
+  id: string;
+  email: string;
+};
+
+type MercadoPagoCustomerSearchResponse = {
+  results?: MercadoPagoCustomer[];
+};
+
+type MercadoPagoCard = {
+  id: string;
+  customer_id?: string;
+  payment_method?: {
+    id?: string;
+    name?: string;
+  };
+  last_four_digits?: string;
+  first_six_digits?: string;
+  cardholder?: {
+    name?: string;
+  };
+};
+
 type MercadoPagoRefundResponse = {
   id: number;
   payment_id: number;
@@ -186,6 +209,56 @@ async function mercadopagoRequest<T>(
   }
 
   return (await response.json()) as T;
+}
+
+export async function findMercadoPagoCustomerByEmail(email: string): Promise<MercadoPagoCustomer | null> {
+  const query = new URLSearchParams({ email, limit: '1' }).toString();
+  const data = await mercadopagoRequest<MercadoPagoCustomerSearchResponse>(
+    `/v1/customers/search?${query}`,
+    { method: 'GET' }
+  );
+  return data.results?.[0] || null;
+}
+
+export async function createMercadoPagoCustomer(email: string): Promise<MercadoPagoCustomer> {
+  return mercadopagoRequest<MercadoPagoCustomer>(
+    '/v1/customers',
+    {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    },
+    randomUUID()
+  );
+}
+
+export async function getOrCreateMercadoPagoCustomer(email: string): Promise<MercadoPagoCustomer> {
+  const existing = await findMercadoPagoCustomerByEmail(email);
+  if (existing?.id) return existing;
+  return createMercadoPagoCustomer(email);
+}
+
+export async function createMercadoPagoCard(
+  customerId: string,
+  token: string
+): Promise<MercadoPagoCard> {
+  return mercadopagoRequest<MercadoPagoCard>(
+    `/v1/customers/${customerId}/cards`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    },
+    randomUUID()
+  );
+}
+
+export async function deleteMercadoPagoCard(customerId: string, cardId: string): Promise<void> {
+  await mercadopagoRequest<unknown>(
+    `/v1/customers/${customerId}/cards/${cardId}`,
+    {
+      method: 'DELETE',
+    },
+    randomUUID()
+  );
 }
 
 export async function getMercadoPagoPayment(paymentId: string | number): Promise<MercadoPagoPayment> {
