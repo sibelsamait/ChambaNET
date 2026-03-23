@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Sidebar from '../components/Sidebar';
 import ActiveProfileView from '../components/ActiveProfileView';
+import { isSupportAdminUser } from '@/lib/supportAuth';
 
 type DireccionPerfil = {
   calle?: string;
@@ -40,6 +41,8 @@ export default async function PerfilPage() {
     .select('nombres, apellido_paterno, apellido_materno, rut, email, telefono, fecha_nacimiento, direccion_completa')
     .eq('id', userId)
     .single();
+
+  const isSupportAdmin = isSupportAdminUser(perfilUsuario?.email, perfilUsuario?.rut);
 
   const { data: imagenUsuario } = await supabase
     .from('user_imagenes')
@@ -118,6 +121,7 @@ export default async function PerfilPage() {
         apellidoPaterno={perfilUsuario?.apellido_paterno}
         estrellas={promedioValoraciones ?? undefined}
         imagenUrl={imagenUsuario?.image_data_url}
+        isSupportAdmin={isSupportAdmin}
       />
       <main className="min-w-0 flex-1 overflow-y-auto bg-blue-500/95">
         <ActiveProfileView

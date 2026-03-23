@@ -6,11 +6,12 @@ interface SidebarProps {
   apellidoPaterno?: string | null;
   estrellas?: number | null;
   imagenUrl?: string | null;
+  isSupportAdmin?: boolean;
 }
 
 import ProfileSummary from './ProfileSummary';
 
-export default function Sidebar({ nombres, apellidoPaterno, estrellas, imagenUrl }: SidebarProps) {
+export default function Sidebar({ nombres, apellidoPaterno, estrellas, imagenUrl, isSupportAdmin }: SidebarProps) {
   const primerNombre = nombres?.trim().split(/\s+/)[0] ?? '';
   const nombreCorto = [primerNombre, apellidoPaterno?.trim()]
     .filter(Boolean)
@@ -34,6 +35,14 @@ export default function Sidebar({ nombres, apellidoPaterno, estrellas, imagenUrl
         <button className="liftable w-full rounded-xl bg-white/90 p-2.5 text-left underline decoration-1 underline-offset-4 shadow-[0_8px_14px_rgba(36,72,117,0.18)] hover:bg-blue-100">Historial de publicaciones</button>
         <button className="liftable w-full rounded-xl p-2.5 text-left underline decoration-1 underline-offset-4 hover:bg-blue-100">Historial de trabajos</button>
         <button className="liftable w-full rounded-xl p-2.5 text-left underline decoration-1 underline-offset-4 hover:bg-blue-100">Valoraciones</button>
+        {isSupportAdmin ? (
+          <Link
+            href="/soporte"
+            className="liftable block w-full rounded-xl bg-blue-100 p-2.5 text-left font-extrabold underline decoration-1 underline-offset-4 hover:bg-blue-200"
+          >
+            Mesa de soporte
+          </Link>
+        ) : null}
       </nav>
       <div className="border-t border-blue-200 p-3 lg:mt-auto">
         <a

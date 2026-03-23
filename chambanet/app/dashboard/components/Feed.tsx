@@ -178,6 +178,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [chambaActivaEmpleador, setChambaActivaEmpleador] = useState<ChambaDetalleFull | null>(null);
   const [modalSoporteAbierto, setModalSoporteAbierto] = useState(false);
   const [soporteMensaje, setSoporteMensaje] = useState('');
+  const [enviandoSoporte, setEnviandoSoporte] = useState(false);
   const [errorSoporte, setErrorSoporte] = useState<string | null>(null);
   const [mensajeContacto, setMensajeContacto] = useState<string | null>(null);
   const [gestionandoCierre, setGestionandoCierre] = useState(false);
@@ -932,17 +933,46 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     setModalSoporteAbierto(true);
   };
 
-  const handleEnviarSoporte = () => {
+  const handleEnviarSoporte = async () => {
     const texto = soporteMensaje.trim();
     if (texto.length < 10) {
       setErrorSoporte('Describe el problema con al menos 10 caracteres.');
       return;
     }
 
-    setModalSoporteAbierto(false);
-    setSoporteMensaje('');
+    const chambaId =
+      chambaActivaEmpleador?.chamba.id ?? chambaActivaTrabajador?.chamba.id ?? modalChambaData?.chamba.id ?? null;
+
+    setEnviandoSoporte(true);
     setErrorSoporte(null);
-    setMensajeCierre('Solicitud enviada a soporte. Te contactaremos pronto para ayudarte con esta chamba.');
+
+    try {
+      const response = await fetch('/api/soporte/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: 'Incidencia en chamba en obra',
+          descripcion: texto,
+          tipo: 'CHAMBA',
+          prioridad: 'ALTA',
+          chambaId,
+          consentimientoUsuario: true,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'No se pudo enviar la solicitud de soporte.');
+      }
+
+      setModalSoporteAbierto(false);
+      setSoporteMensaje('');
+      setMensajeCierre('Ticket de soporte creado correctamente. El equipo revisará tu caso.');
+    } catch (error: unknown) {
+      setErrorSoporte(error instanceof Error ? error.message : 'No se pudo enviar la solicitud de soporte.');
+    } finally {
+      setEnviandoSoporte(false);
+    }
   };
 
   const abrirModalValoracion = () => {
@@ -1217,6 +1247,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4 py-6"
           onClick={() => {
+            if (enviandoSoporte) return;
             setModalSoporteAbierto(false);
             setErrorSoporte(null);
           }}
@@ -1235,6 +1266,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               <button
                 type="button"
                 onClick={() => {
+                  if (enviandoSoporte) return;
                   setModalSoporteAbierto(false);
                   setErrorSoporte(null);
                 }}
@@ -1263,9 +1295,11 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               <button
                 type="button"
                 onClick={() => {
+                  if (enviandoSoporte) return;
                   setModalSoporteAbierto(false);
                   setErrorSoporte(null);
                 }}
+                disabled={enviandoSoporte}
                 className="liftable flex-1 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-extrabold text-gray-700 hover:bg-white"
               >
                 Cancelar
@@ -1273,9 +1307,10 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               <button
                 type="button"
                 onClick={handleEnviarSoporte}
+                disabled={enviandoSoporte}
                 className="liftable flex-1 rounded-full bg-blue-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-blue-700"
               >
-                Enviar a soporte
+                {enviandoSoporte ? 'Enviando...' : 'Enviar a soporte'}
               </button>
             </div>
           </div>

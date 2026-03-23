@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import Sidebar from './components/Sidebar';
 import Feed from './components/Feed';
 import ChatPanel from './components/ChatPanel';
+import { isSupportAdminUser } from '@/lib/supportAuth';
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
@@ -23,9 +24,11 @@ export default async function DashboardPage() {
 
   const { data: perfilUsuario } = await supabase
     .from('usuarios')
-    .select('nombres, apellido_paterno')
+    .select('nombres, apellido_paterno, email, rut')
     .eq('id', authData.user.id)
     .single();
+
+  const isSupportAdmin = isSupportAdminUser(perfilUsuario?.email, perfilUsuario?.rut);
 
   const { data: imagenUsuario } = await supabase
     .from('user_imagenes')
@@ -83,6 +86,7 @@ export default async function DashboardPage() {
         apellidoPaterno={perfilUsuario?.apellido_paterno}
         estrellas={ratingMap.get(authData.user.id) ?? undefined}
         imagenUrl={imagenUsuario?.image_data_url}
+        isSupportAdmin={isSupportAdmin}
       />
       <Feed chambas={chambas} userId={authData.user.id} />
       <ChatPanel userId={authData.user.id} />
