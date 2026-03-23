@@ -6,6 +6,7 @@ import { communes } from '@clregions/data/array/communes';
 import { provinces } from '@clregions/data/array/provinces';
 import { regions } from '@clregions/data/array/regions';
 import Avatar from './Avatar';
+import NotificationsBell from './NotificationsBell';
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -478,6 +479,10 @@ export default function ActiveProfileView({
 
   return (
     <>
+      <div className="fixed right-4 top-4 z-40">
+        <NotificationsBell />
+      </div>
+
       {isEditModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6"

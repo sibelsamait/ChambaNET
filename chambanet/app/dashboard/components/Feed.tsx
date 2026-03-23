@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Avatar from './Avatar';
+import NotificationsBell from './NotificationsBell';
 
 const MapPanel = dynamic(() => import('./MapPanel'), {
   ssr: false,
@@ -1038,6 +1039,10 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-blue-500/95 text-white">
+      <div className="fixed right-4 top-4 z-40">
+        <NotificationsBell />
+      </div>
+
       {/* Panel perfil completo del trabajador (z-[60], sobre el modal de chamba) */}
       {(perfilTrabajador || cargandoPerfil) && (
         <div
