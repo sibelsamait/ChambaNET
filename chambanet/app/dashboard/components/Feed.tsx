@@ -76,6 +76,15 @@ interface PostulanteItem {
     apellido_paterno: string;
     apellido_materno?: string | null;
     rut?: string | null;
+    email?: string | null;
+    telefono?: string | null;
+    fecha_nacimiento?: string | null;
+    direccion_completa?: {
+      calle?: string;
+      numero?: string;
+      comuna_nombre?: string;
+      region_nombre?: string;
+    } | null;
     promedio_valoracion?: number | null;
     imagen_url?: string | null;
   };
@@ -87,6 +96,15 @@ interface PerfilTrabajador {
   apellido_paterno: string;
   apellido_materno?: string | null;
   rut?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+  fecha_nacimiento?: string | null;
+  direccion_completa?: {
+    calle?: string;
+    numero?: string;
+    comuna_nombre?: string;
+    region_nombre?: string;
+  } | null;
   promedio_valoracion?: number | null;
   imagen_url?: string | null;
   trabajos_completados: number;
@@ -112,6 +130,15 @@ interface ChambaDetalleFull {
     nombres: string;
     apellido_paterno: string;
     rut?: string;
+    email?: string | null;
+    telefono?: string | null;
+    fecha_nacimiento?: string | null;
+    direccion_completa?: {
+      calle?: string;
+      numero?: string;
+      comuna_nombre?: string;
+      region_nombre?: string;
+    } | null;
     promedio_valoracion?: number;
     imagen_url?: string | null;
     publicaciones_realizadas: number;
@@ -124,6 +151,17 @@ interface ChambaDetalleFull {
     id: string;
     nombres: string;
     apellido_paterno: string;
+    apellido_materno?: string | null;
+    rut?: string | null;
+    email?: string | null;
+    telefono?: string | null;
+    fecha_nacimiento?: string | null;
+    direccion_completa?: {
+      calle?: string;
+      numero?: string;
+      comuna_nombre?: string;
+      region_nombre?: string;
+    } | null;
   } | null;
   puede_solicitar_cierre?: boolean;
   puede_aprobar_cierre?: boolean;
@@ -141,6 +179,27 @@ interface EvidenciaMeta {
   tamano: number;
   tipo: string;
   fecha: string;
+}
+
+function formatFechaSolo(raw?: string | null) {
+  if (!raw) return 'No registrada';
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return 'No registrada';
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(parsed);
+}
+
+function direccionComoTexto(
+  raw?: { calle?: string; numero?: string; comuna_nombre?: string; region_nombre?: string } | null
+) {
+  if (!raw) return 'No registrada';
+  const partes = [raw.calle, raw.numero, raw.comuna_nombre, raw.region_nombre]
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+  return partes.length ? partes.join(', ') : 'No registrada';
 }
 
 export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: string }) {
@@ -1143,11 +1202,23 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     {perfilTrabajador.rut && (
                       <p className="text-sm font-semibold text-gray-600">{perfilTrabajador.rut}</p>
                     )}
+                    {perfilTrabajador.email && (
+                      <p className="text-xs font-semibold text-gray-600">{perfilTrabajador.email}</p>
+                    )}
+                    {perfilTrabajador.telefono && (
+                      <p className="text-xs font-semibold text-gray-600">{perfilTrabajador.telefono}</p>
+                    )}
                     <p className="text-base font-black text-gray-900">
                       ★{' '}
                       {typeof perfilTrabajador.promedio_valoracion === 'number'
                         ? perfilTrabajador.promedio_valoracion.toFixed(1).replace('.', ',')
                         : '-'}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Nacimiento: <span className="font-semibold">{formatFechaSolo(perfilTrabajador.fecha_nacimiento)}</span>
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Dirección: <span className="font-semibold">{direccionComoTexto(perfilTrabajador.direccion_completa)}</span>
                     </p>
                     <p className="text-xs text-gray-600">
                       Trabajos completados:{' '}
@@ -1582,6 +1653,15 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                                   {p.trabajador.rut && (
                                     <p className="text-xs text-blue-100">{p.trabajador.rut}</p>
                                   )}
+                                  {p.trabajador.email && (
+                                    <p className="truncate text-[11px] text-blue-100">{p.trabajador.email}</p>
+                                  )}
+                                  {p.trabajador.telefono && (
+                                    <p className="text-[11px] text-blue-100">{p.trabajador.telefono}</p>
+                                  )}
+                                  <p className="truncate text-[11px] text-blue-100">
+                                    Dirección: {direccionComoTexto(p.trabajador.direccion_completa)}
+                                  </p>
                                   <p className="text-sm font-black">
                                     ★{' '}
                                     {typeof p.trabajador.promedio_valoracion === 'number'
@@ -1658,6 +1738,19 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                         {modalChambaData.empleador.rut && (
                           <p className="text-sm font-semibold text-blue-100">{modalChambaData.empleador.rut}</p>
                         )}
+                        {modalChambaData.empleador.email && (
+                          <p className="text-sm font-semibold text-blue-100">{modalChambaData.empleador.email}</p>
+                        )}
+                        {modalChambaData.empleador.telefono && (
+                          <p className="text-sm font-semibold text-blue-100">{modalChambaData.empleador.telefono}</p>
+                        )}
+                        <p className="text-xs text-blue-100">
+                          Nacimiento: <span className="font-bold text-white">{formatFechaSolo(modalChambaData.empleador.fecha_nacimiento)}</span>
+                        </p>
+                        <p className="text-xs text-blue-100">
+                          Dirección:{' '}
+                          <span className="font-bold text-white">{direccionComoTexto(modalChambaData.empleador.direccion_completa)}</span>
+                        </p>
                         <p className="text-sm text-blue-100">
                           Publicaciones realizadas:{' '}
                           <span className="font-extrabold text-white">{modalChambaData.empleador.publicaciones_realizadas}</span>
@@ -2077,6 +2170,21 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     <p className="text-sm font-extrabold text-gray-900">
                       {chambaActivaTrabajador.empleador.nombres} {chambaActivaTrabajador.empleador.apellido_paterno}
                     </p>
+                    {chambaActivaTrabajador.empleador.rut ? (
+                      <p className="text-xs font-semibold text-gray-700">{chambaActivaTrabajador.empleador.rut}</p>
+                    ) : null}
+                    {chambaActivaTrabajador.empleador.email ? (
+                      <p className="text-xs font-semibold text-gray-700">{chambaActivaTrabajador.empleador.email}</p>
+                    ) : null}
+                    {chambaActivaTrabajador.empleador.telefono ? (
+                      <p className="text-xs font-semibold text-gray-700">{chambaActivaTrabajador.empleador.telefono}</p>
+                    ) : null}
+                    <p className="text-[11px] text-gray-700">
+                      Nacimiento: {formatFechaSolo(chambaActivaTrabajador.empleador.fecha_nacimiento)}
+                    </p>
+                    <p className="text-[11px] text-gray-700">
+                      Dirección: {direccionComoTexto(chambaActivaTrabajador.empleador.direccion_completa)}
+                    </p>
                     <p className="text-sm font-black text-gray-900">
                       ☆{' '}
                       {typeof chambaActivaTrabajador.empleador.promedio_valoracion === 'number'
@@ -2222,6 +2330,21 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   <div className="mt-2 space-y-3">
                     <p className="text-sm font-bold text-gray-900">
                       {chambaActivaEmpleador.trabajador_activo.nombres} {chambaActivaEmpleador.trabajador_activo.apellido_paterno}
+                    </p>
+                    {chambaActivaEmpleador.trabajador_activo.rut ? (
+                      <p className="text-xs font-semibold text-gray-700">{chambaActivaEmpleador.trabajador_activo.rut}</p>
+                    ) : null}
+                    {chambaActivaEmpleador.trabajador_activo.email ? (
+                      <p className="text-xs font-semibold text-gray-700">{chambaActivaEmpleador.trabajador_activo.email}</p>
+                    ) : null}
+                    {chambaActivaEmpleador.trabajador_activo.telefono ? (
+                      <p className="text-xs font-semibold text-gray-700">{chambaActivaEmpleador.trabajador_activo.telefono}</p>
+                    ) : null}
+                    <p className="text-[11px] text-gray-700">
+                      Nacimiento: {formatFechaSolo(chambaActivaEmpleador.trabajador_activo.fecha_nacimiento)}
+                    </p>
+                    <p className="text-[11px] text-gray-700">
+                      Dirección: {direccionComoTexto(chambaActivaEmpleador.trabajador_activo.direccion_completa)}
                     </p>
                     <button
                       type="button"
