@@ -227,6 +227,15 @@ export default function ActiveProfileView({
       .replace(/\s+/g, ' ')
       .trim() || fullName;
 
+  const handleBackClick = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push('/dashboard');
+  };
+
   const profileFields = useMemo(
     () => [
       { label: 'Fecha de nacimiento', value: formatDateHuman(profileData.fechaNacimiento) },
@@ -700,9 +709,15 @@ export default function ActiveProfileView({
         <div className="overflow-hidden rounded-[24px] border border-blue-200 bg-[#559ff6] shadow-[0_18px_44px_rgba(36,72,117,0.18)]">
           <div className="px-5 pt-5 sm:px-8 sm:pt-7">
             <div className="mb-4 flex items-center gap-3 text-white">
-              <span className="text-2xl leading-none" aria-hidden="true">
+              <button
+                type="button"
+                onClick={handleBackClick}
+                className="liftable rounded-md px-1 text-2xl leading-none transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                aria-label="Volver a la página anterior"
+                title="Volver"
+              >
                 ←
-              </span>
+              </button>
               <h1 className="text-3xl font-extrabold tracking-tight sm:text-[2.15rem]">Mi perfil</h1>
             </div>
 
