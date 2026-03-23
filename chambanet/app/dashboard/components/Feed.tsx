@@ -60,6 +60,7 @@ interface MiChambaItem {
   pago_clp: number;
   estado: string;
   rol: 'empleador' | 'postulante';
+  estado_postulacion?: string;
   valoracion_empleador_completa?: boolean;
   valoracion_trabajador_completa?: boolean;
   cierre_habilitado_por_valoraciones?: boolean;
@@ -1950,13 +1951,25 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               {mostrarMisChambas && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-40 min-w-[270px] overflow-hidden rounded-xl border border-blue-100 bg-white shadow-[0_8px_32px_rgba(30,64,175,0.22)]">
                   <div className="border-b border-gray-100 px-4 py-2.5">
-                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-700">Mis chambas activas</p>
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-700">
+                      {filtroMisChambas === 'publicaciones'
+                        ? 'Historial de publicaciones'
+                        : filtroMisChambas === 'postulaciones'
+                          ? 'Historial de trabajos'
+                          : 'Mi historial de chambas'}
+                    </p>
                   </div>
 
                   {cargandoMisChambas ? (
                     <p className="px-4 py-4 text-xs text-gray-400">Cargando…</p>
                   ) : misChambasFiltradas.length === 0 ? (
-                    <p className="px-4 py-4 text-xs text-gray-500">No tienes chambas activas.</p>
+                    <p className="px-4 py-4 text-xs text-gray-500">
+                      {filtroMisChambas === 'publicaciones'
+                        ? 'No tienes publicaciones históricas.'
+                        : filtroMisChambas === 'postulaciones'
+                          ? 'No tienes trabajos históricos.'
+                          : 'No tienes chambas en tu historial.'}
+                    </p>
                   ) : (
                     <ul className="max-h-72 overflow-y-auto">
                       {misChambasFiltradas.map((item) => (
@@ -1971,9 +1984,20 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                               <p className="truncate text-sm font-bold text-gray-800">{item.titulo}</p>
                               <p className="text-[11px] text-gray-500">
                                 CLP$ {item.pago_clp.toLocaleString('es-CL')}
-                                <span className="mx-1">·</span>
-                                <span className="uppercase">{item.estado.replace(/_/g, ' ')}</span>
                               </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-slate-700">
+                                  Chamba: {item.estado.replace(/_/g, ' ')}
+                                </span>
+                                {item.rol === 'postulante' && item.estado_postulacion ? (
+                                  <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-blue-800">
+                                    Postulación: {item.estado_postulacion.replace(/_/g, ' ')}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {item.rol === 'postulante' && item.estado_postulacion ? (
+                                <p className="mt-1 text-[10px] font-semibold text-gray-500">Se muestran ambos estados para evitar confusiones.</p>
+                              ) : null}
                               {item.badge_alerta ? (
                                 <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-800">
                                   {item.badge_alerta}

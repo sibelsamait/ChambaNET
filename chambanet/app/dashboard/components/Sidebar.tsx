@@ -44,7 +44,7 @@ export default function Sidebar({ nombres, apellidoPaterno, estrellas, imagenUrl
           Historial de publicaciones
         </Link>
         <Link
-          href="/dashboard/perfil#resumen-trabajos"
+          href="/dashboard?panel=postulaciones"
           className="liftable block w-full rounded-xl p-2.5 text-left underline decoration-1 underline-offset-4 hover:bg-blue-100"
         >
           Historial de trabajos

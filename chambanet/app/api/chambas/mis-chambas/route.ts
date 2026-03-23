@@ -7,6 +7,7 @@ interface MiChambaItem {
   pago_clp: number;
   estado: string;
   rol: 'empleador' | 'postulante';
+  estado_postulacion?: string;
   valoracion_empleador_completa?: boolean;
   valoracion_trabajador_completa?: boolean;
   cierre_habilitado_por_valoraciones?: boolean;
@@ -24,15 +25,14 @@ export async function GET(request: Request) {
   const [{ data: propias, error: e1 }, { data: postulaciones, error: e2 }] = await Promise.all([
     supabase
       .from('chambas')
-      .select('id, titulo, pago_clp, estado')
+      .select('id, titulo, pago_clp, estado, creado_en')
       .eq('empleador_id', userId)
-      .in('estado', ['PUBLICADA', 'CON_POSTULANTES', 'EN_OBRA', 'ESPERANDO_APROBACION'])
       .order('creado_en', { ascending: false }),
     supabase
       .from('postulaciones')
-      .select('chamba:chambas(id, titulo, pago_clp, estado)')
+      .select('estado, creado_en, chamba:chambas(id, titulo, pago_clp, estado, creado_en)')
       .eq('trabajador_id', userId)
-      .in('estado', ['PENDIENTE', 'ACEPTADA']),
+      .order('creado_en', { ascending: false }),
   ]);
 
   if (e1 || e2) {
@@ -103,10 +103,30 @@ export async function GET(request: Request) {
 
   const resultado: MiChambaItem[] = [
     ...propiasConFlags,
-    ...(postulaciones || []).flatMap((p) => {
-      const c = (p.chamba as unknown) as { id: string; titulo: string; pago_clp: number; estado: string } | null;
-      return c ? [{ ...c, rol: 'postulante' as const }] : [];
-    }),
+    ...(postulaciones || [])
+      .flatMap((p) => {
+        const c = (p.chamba as unknown) as {
+          id: string;
+          titulo: string;
+          pago_clp: number;
+          estado: string;
+          creado_en?: string;
+        } | null;
+        return c
+          ? [
+              {
+                ...c,
+                rol: 'postulante' as const,
+                estado_postulacion: p.estado,
+              },
+            ]
+          : [];
+      })
+      .sort((a, b) => {
+        const aTime = Date.parse((a as { creado_en?: string }).creado_en || '');
+        const bTime = Date.parse((b as { creado_en?: string }).creado_en || '');
+        return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+      }),
   ];
 
   return NextResponse.json({ chambas: resultado });
