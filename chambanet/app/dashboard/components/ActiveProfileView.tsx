@@ -111,11 +111,14 @@ function resolveRegionName(regionId?: string, fallback?: string) {
 
 function getCommuneOptionsByRegionId(regionId?: string) {
   if (!regionId) return [] as typeof communes;
-  const provinceIds = new Set(
-    provinces.filter((province) => province.regionId === regionId).map((province) => province.id)
+  const normalizedRegionId = String(regionId);
+  const provinceIds = new Set<string>(
+    provinces
+      .filter((province) => String(province.regionId) === normalizedRegionId)
+      .map((province) => String(province.id))
   );
   return communes
-    .filter((commune) => provinceIds.has(commune.provinceId))
+    .filter((commune) => provinceIds.has(String(commune.provinceId)))
     .sort((a, b) => a.name.localeCompare(b.name, 'es-CL'));
 }
 
