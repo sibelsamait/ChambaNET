@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import Sidebar from '@/app/dashboard/components/Sidebar';
 import WalletPanel from './components/WalletPanel';
+import PaymentMethodsCard from './components/PaymentMethodsCard';
 import { isSupportAdminUser } from '@/lib/supportAuth';
 
 export default async function BilleteraPage() {
@@ -78,6 +79,8 @@ export default async function BilleteraPage() {
         </div>
 
         <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+          <PaymentMethodsCard />
+
           {/* Saldo Actual */}
           <div className="rounded-2xl border-2 border-[#d7cc83] bg-gradient-to-br from-[#f0e3aa] to-[#e8d87a] p-8 shadow-lg">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-700">

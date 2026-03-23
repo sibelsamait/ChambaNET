@@ -55,6 +55,12 @@ export default function Sidebar({ nombres, apellidoPaterno, estrellas, imagenUrl
         >
           Valoraciones
         </Link>
+        <Link
+          href="/dashboard/billetera"
+          className="liftable block w-full rounded-xl bg-white/90 p-2.5 text-left underline decoration-1 underline-offset-4 shadow-[0_8px_14px_rgba(36,72,117,0.18)] hover:bg-blue-100"
+        >
+          Billetera y métodos de pago
+        </Link>
         {isSupportAdmin ? (
           <Link
             href="/soporte"
