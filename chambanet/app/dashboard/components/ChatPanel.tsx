@@ -185,7 +185,7 @@ export default function ChatPanel({ userId }: ChatPanelProps) {
       </div>
 
       <div className="grid min-h-0 grid-rows-[auto_1fr_auto] lg:flex-1">
-        <div className="feed-scroll max-h-56 overflow-y-auto border-b border-blue-100 lg:max-h-64">
+        <div className="feed-scroll max-h-44 overflow-y-auto border-b border-blue-100 lg:max-h-64">
           {cargandoConversaciones ? (
             <p className="px-3 py-3 text-xs font-semibold text-gray-500">Cargando conversaciones...</p>
           ) : conversaciones.length === 0 ? (
@@ -222,7 +222,7 @@ export default function ChatPanel({ userId }: ChatPanelProps) {
           )}
         </div>
 
-        <div ref={mensajesContainerRef} className="feed-scroll h-56 overflow-y-auto px-3 py-3 lg:h-auto lg:flex-1">
+        <div ref={mensajesContainerRef} className="feed-scroll h-48 overflow-y-auto px-3 py-3 lg:h-auto lg:flex-1">
           {!conversacionActiva ? (
             <p className="text-xs font-semibold text-gray-500">Selecciona una conversación para empezar.</p>
           ) : cargandoMensajes ? (

@@ -214,6 +214,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const router = useRouter();
   const searchParams = useSearchParams();
   const [vista, setVista] = useState<'listado' | 'mapa'>('listado');
+  const [panelSidebarActivo, setPanelSidebarActivo] = useState<'ninguno' | 'postulaciones' | 'publicaciones'>('ninguno');
   const [postulandoId, setPostulandoId] = useState<string | null>(null);
   const [chambasList, setChambasList] = useState<Chamba[]>(chambas);
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
@@ -605,10 +606,14 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
   useEffect(() => {
     const panel = searchParams.get('panel');
-    if (panel !== 'postulaciones' && panel !== 'publicaciones') return;
+    if (panel !== 'postulaciones' && panel !== 'publicaciones') {
+      setPanelSidebarActivo('ninguno');
+      return;
+    }
 
     setVista('listado');
-    setMostrarMisChambas(true);
+    setMostrarMisChambas(false);
+    setPanelSidebarActivo(panel === 'postulaciones' ? 'postulaciones' : 'publicaciones');
     setFiltroMisChambas(panel === 'postulaciones' ? 'postulaciones' : 'publicaciones');
     void cargarMisChambas();
   }, [searchParams, cargarMisChambas]);
@@ -627,6 +632,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
   const handleClickMiChamba = useCallback((item: MiChambaItem) => {
     setMostrarMisChambas(false);
+    setPanelSidebarActivo('ninguno');
     const el = articulosRef.current.get(item.id);
     if (el) {
       setVista('listado');
@@ -1179,6 +1185,13 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       ['EN_OBRA', 'ESPERANDO_APROBACION'].includes(chambaActivaEmpleador.chamba.estado)
   );
 
+  const historialSidebarTitulo =
+    panelSidebarActivo === 'publicaciones'
+      ? 'Historial de publicaciones'
+      : panelSidebarActivo === 'postulaciones'
+        ? 'Historial de trabajos'
+        : 'Mi historial';
+
   const abrirPreviewPerfil = (url?: string | null, nombre?: string) => {
     if (!url) return;
     setPerfilImagePreview({ url, nombre: nombre || 'Usuario' });
@@ -1186,7 +1199,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-blue-500/95 text-white">
-      <div className="fixed right-4 top-4 z-40">
+      <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 sm:right-4 sm:top-4">
         <NotificationsBell />
       </div>
 
@@ -1332,7 +1345,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           onClick={cerrarModalValoracion}
         >
           <div
-            className="w-full max-w-md rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_16px_48px_rgba(30,64,175,0.45)]"
+            className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_16px_48px_rgba(30,64,175,0.45)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
@@ -1419,7 +1432,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
           }}
         >
           <div
-            className="w-full max-w-md rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_16px_48px_rgba(30,64,175,0.45)]"
+            className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_16px_48px_rgba(30,64,175,0.45)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
@@ -1572,12 +1585,9 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   <div className="flex flex-col items-center gap-1.5">
                     {modalChambaData.ya_postule ? (
                       <>
-                        <button
-                          disabled
-                          className="w-full cursor-not-allowed rounded-full bg-gray-300 px-5 py-2.5 text-sm font-bold text-gray-600"
-                        >
+                        <p className="w-full rounded-full bg-gray-300 px-5 py-2.5 text-center text-sm font-bold text-gray-600">
                           Postulado
-                        </button>
+                        </p>
                         {modalChambaData.postulacion_id && (
                           <button
                             onClick={() => handleCancelarPostulacion(modalChambaData.postulacion_id!)}
@@ -2125,7 +2135,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               </button>
 
               {mostrarMisChambas && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-40 min-w-[270px] overflow-hidden rounded-xl border border-blue-100 bg-white shadow-[0_8px_32px_rgba(30,64,175,0.22)]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-[min(92vw,300px)] overflow-hidden rounded-xl border border-blue-100 bg-white shadow-[0_8px_32px_rgba(30,64,175,0.22)] sm:min-w-[270px]">
                   <div className="border-b border-gray-100 px-4 py-2.5">
                     <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-700">
                       {filtroMisChambas === 'publicaciones'
@@ -2483,6 +2493,59 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
               {mensajeCierre ? <p className="mt-2 text-xs font-semibold text-blue-700">{mensajeCierre}</p> : null}
             </div>
           </section>
+        ) : panelSidebarActivo !== 'ninguno' ? (
+          <section className="mx-auto w-full max-w-4xl rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_12px_40px_rgba(58,82,123,0.30)] sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3 border-b-2 border-dashed border-[#d6c989] pb-4">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Vista de sidebar</p>
+                <h2 className="text-2xl font-extrabold text-black">{historialSidebarTitulo}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPanelSidebarActivo('ninguno');
+                  router.push('/dashboard');
+                }}
+                className="liftable rounded-full border border-blue-200 bg-white px-4 py-2 text-xs font-extrabold text-blue-700 hover:bg-blue-50"
+              >
+                Cerrar vista
+              </button>
+            </div>
+
+            {cargandoMisChambas ? (
+              <p className="text-sm font-semibold text-gray-500">Cargando historial...</p>
+            ) : misChambasFiltradas.length === 0 ? (
+              <p className="text-sm font-semibold text-gray-600">
+                {panelSidebarActivo === 'publicaciones'
+                  ? 'No tienes publicaciones para mostrar.'
+                  : 'No tienes trabajos para mostrar.'}
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {misChambasFiltradas.map((item) => (
+                  <button
+                    type="button"
+                    key={`sidebar-panel-${item.id}`}
+                    onClick={() => handleClickMiChamba(item)}
+                    className="liftable flex w-full items-start gap-3 rounded-xl border border-[#d7cc83] bg-white px-4 py-3 text-left hover:bg-blue-50"
+                  >
+                    <span className="mt-0.5 text-base">{item.rol === 'empleador' ? '📌' : '🤝'}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-extrabold text-gray-900">{item.titulo}</p>
+                      <p className="text-xs font-semibold text-gray-600">
+                        CLP$ {item.pago_clp.toLocaleString('es-CL')} · {item.estado.replace(/_/g, ' ')}
+                      </p>
+                      {item.badge_alerta ? (
+                        <p className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-800">
+                          {item.badge_alerta}
+                        </p>
+                      ) : null}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
         ) : vista === 'listado' ? (
           chambasList.length > 0 ? (
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-3.5">
@@ -2552,7 +2615,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                       </div>
                     )}
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                      <div className="flex min-w-[100px] items-center gap-2 border-b border-dashed border-[#d6c989] pb-2.5 sm:mr-3 sm:min-h-[100px] sm:w-[118px] sm:flex-col sm:justify-center sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
+                      <div className="flex min-w-0 items-center gap-2 border-b border-dashed border-[#d6c989] pb-2.5 sm:mr-3 sm:min-h-[100px] sm:w-[118px] sm:flex-col sm:justify-center sm:border-b-0 sm:border-r sm:pb-0 sm:pr-3">
                         <Avatar
                           imageUrl={chamba.empleador_imagen_url}
                           name={`${chamba.empleador?.nombres || ''} ${chamba.empleador?.apellido_paterno || ''}`.trim()}

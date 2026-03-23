@@ -487,7 +487,7 @@ export default function ActiveProfileView({
 
   return (
     <>
-      <div className="fixed right-4 top-4 z-40">
+      <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 sm:right-4 sm:top-4">
         <NotificationsBell />
       </div>
 
@@ -497,7 +497,7 @@ export default function ActiveProfileView({
           onClick={handleCloseEditModal}
         >
           <div
-            className="w-full max-w-lg overflow-hidden rounded-2xl shadow-[0_16px_48px_rgba(30,64,175,0.40)]"
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl shadow-[0_16px_48px_rgba(30,64,175,0.40)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="rounded-t-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900">
@@ -651,7 +651,7 @@ export default function ActiveProfileView({
           onClick={handleCloseImageModal}
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-2xl shadow-[0_16px_48px_rgba(30,64,175,0.40)]"
+            className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl shadow-[0_16px_48px_rgba(30,64,175,0.40)]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="rounded-t-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900">

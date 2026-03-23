@@ -146,7 +146,7 @@ export default function SupportConsole() {
 
   return (
     <div className="relative min-h-screen bg-blue-500/95 px-4 py-5 text-gray-900 sm:px-6 lg:px-8">
-      <div className="fixed right-4 top-4 z-40">
+      <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 sm:right-4 sm:top-4">
         <NotificationsBell />
       </div>
 

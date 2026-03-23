@@ -92,20 +92,60 @@ export default function Inicio() {
                 <div className="mb-4 h-24 w-24 rounded-full bg-blue-100"></div>
                 <h3 className="text-xl font-extrabold">Sibel Sama</h3>
                 <p className="mb-2 text-sm text-blue-100">Informática</p>
-                <a href="#" className="text-base text-white/80 hover:text-white transition">@github_sibel</a>
+                <a
+                  href="https://github.com/sibelsamait"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-base text-white/80 hover:text-white transition"
+                >
+                  @github_sibel
+                </a>
               </div>
               <div className="liftable flex flex-col items-center rounded-2xl bg-blue-400/30 p-6 shadow-[0_10px_20px_rgba(25,53,90,0.2)]">
                 <div className="mb-4 h-24 w-24 rounded-full bg-blue-100"></div>
                 <h3 className="text-xl font-extrabold">Nombre Apellido</h3>
                 <p className="mb-2 text-sm text-blue-100">Ingeniero</p>
-                <a href="#" className="text-base text-white/80 hover:text-white transition">@gitusername</a>
+                <a
+                  href="https://www.linkedin.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-base text-white/80 hover:text-white transition"
+                >
+                  LinkedIn
+                </a>
               </div>
               <div className="liftable flex flex-col items-center rounded-2xl bg-blue-400/30 p-6 shadow-[0_10px_20px_rgba(25,53,90,0.2)]">
                 <div className="mb-4 h-24 w-24 rounded-full bg-blue-100"></div>
                 <h3 className="text-xl font-extrabold">Nombre Apellido</h3>
                 <p className="mb-2 text-sm text-blue-100">Ingeniero</p>
-                <a href="#" className="text-base text-white/80 hover:text-white transition">@gitusername</a>
+                <a
+                  href="https://www.computrabajo.cl/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-base text-white/80 hover:text-white transition"
+                >
+                  Computrabajo
+                </a>
               </div>
+            </div>
+
+            <div className="mx-auto flex w-full max-w-2xl flex-wrap justify-center gap-3 rounded-xl bg-white/10 p-3">
+              <a
+                href="https://www.bne.cl/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="liftable rounded-full border border-white/40 px-3 py-1.5 text-sm font-bold text-white hover:bg-white/20"
+              >
+                Bolsa Nacional de Empleo
+              </a>
+              <a
+                href="https://www.linkedin.com/jobs/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="liftable rounded-full border border-white/40 px-3 py-1.5 text-sm font-bold text-white hover:bg-white/20"
+              >
+                LinkedIn Jobs
+              </a>
             </div>
           </div>
         </section>
