@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase';
+import { getAverageRatingsByUserIds } from '@/lib/ratings';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Sidebar from './components/Sidebar';
@@ -22,7 +23,7 @@ export default async function DashboardPage() {
 
   const { data: perfilUsuario } = await supabase
     .from('usuarios')
-    .select('nombres, apellido_paterno, promedio_valoracion')
+    .select('nombres, apellido_paterno')
     .eq('id', authData.user.id)
     .single();
 
@@ -40,8 +41,7 @@ export default async function DashboardPage() {
       empleador:usuarios (
         id,
         nombres,
-        apellido_paterno,
-        promedio_valoracion
+        apellido_paterno
       )
     `)
     .eq('estado', 'PUBLICADA')
@@ -54,6 +54,7 @@ export default async function DashboardPage() {
   const empleadorIds = Array.from(
     new Set((chambasData || []).map((chamba) => chamba.empleador_id).filter(Boolean))
   );
+  const ratingMap = await getAverageRatingsByUserIds([authData.user.id, ...empleadorIds]);
 
   const { data: imagenesEmpleadores } = empleadorIds.length
     ? await supabase
@@ -68,6 +69,10 @@ export default async function DashboardPage() {
 
   const chambas = (chambasData || []).map((chamba) => ({
     ...chamba,
+    empleador: {
+      ...(chamba.empleador || {}),
+      promedio_valoracion: ratingMap.get(chamba.empleador_id) ?? null,
+    },
     empleador_imagen_url: mapaImagenes.get(chamba.empleador_id) || null,
   }));
 
@@ -76,7 +81,7 @@ export default async function DashboardPage() {
       <Sidebar
         nombres={perfilUsuario?.nombres}
         apellidoPaterno={perfilUsuario?.apellido_paterno}
-        estrellas={perfilUsuario?.promedio_valoracion}
+        estrellas={ratingMap.get(authData.user.id) ?? undefined}
         imagenUrl={imagenUsuario?.image_data_url}
       />
       <Feed chambas={chambas} userId={authData.user.id} />

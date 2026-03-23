@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { getAverageRatingsByUserIds } from '../../../../../lib/ratings';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -44,8 +45,10 @@ export async function GET(request: Request, context: RouteContext) {
     // Perfiles de trabajadores
     const { data: trabajadores } = await supabase
       .from('usuarios')
-      .select('id, nombres, apellido_paterno, apellido_materno, rut, promedio_valoracion')
+      .select('id, nombres, apellido_paterno, apellido_materno, rut')
       .in('id', trabajadorIds);
+
+    const ratingMap = await getAverageRatingsByUserIds(trabajadorIds as string[]);
 
     // Imágenes de trabajadores
     const { data: imagenes } = await supabase
@@ -67,7 +70,7 @@ export async function GET(request: Request, context: RouteContext) {
           apellido_paterno: t?.apellido_paterno ?? '',
           apellido_materno: t?.apellido_materno ?? null,
           rut: t?.rut ?? null,
-          promedio_valoracion: t?.promedio_valoracion ?? null,
+          promedio_valoracion: ratingMap.get(p.trabajador_id) ?? null,
           imagen_url: imagenesMap.get(p.trabajador_id) ?? null,
         },
       };

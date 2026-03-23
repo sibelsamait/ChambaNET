@@ -113,6 +113,18 @@ interface ChambaDetalleFull {
   };
   valoraciones: { estrellas: number; comentario: string | null; emisor_nombre: string }[];
   postulantes?: PostulanteItem[];
+  mi_postulacion_estado?: string | null;
+  trabajador_activo?: {
+    id: string;
+    nombres: string;
+    apellido_paterno: string;
+  } | null;
+  puede_solicitar_cierre?: boolean;
+  puede_aprobar_cierre?: boolean;
+  puede_valorar?: boolean;
+  ya_valore?: boolean;
+  receptor_valoracion_id?: string | null;
+  receptor_valoracion_nombre?: string | null;
 }
 
 interface EvidenciaMeta {
@@ -156,6 +168,13 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [subiendoEvidencias, setSubiendoEvidencias] = useState(false);
   const [mensajeEvidencias, setMensajeEvidencias] = useState<string | null>(null);
   const [mensajeContacto, setMensajeContacto] = useState<string | null>(null);
+  const [gestionandoCierre, setGestionandoCierre] = useState(false);
+  const [mensajeCierre, setMensajeCierre] = useState<string | null>(null);
+  const [modalValoracionAbierto, setModalValoracionAbierto] = useState(false);
+  const [valoracionEstrellas, setValoracionEstrellas] = useState(5);
+  const [valoracionComentario, setValoracionComentario] = useState('');
+  const [valorando, setValorando] = useState(false);
+  const [errorValoracion, setErrorValoracion] = useState<string | null>(null);
   const [geocodeEstado, setGeocodeEstado] = useState<'idle' | 'ok'>('idle');
   const [geocodandoDireccion, setGeocodandoDireccion] = useState(false);
   const [direccionModificada, setDireccionModificada] = useState(false);
@@ -786,6 +805,125 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     setMensajeContacto('Abre el panel de chat para contactar al empleador.');
   };
 
+  const handleSolicitarCierreTrabajador = async () => {
+    if (!chambaActivaTrabajador?.chamba.id) return;
+    if (!window.confirm('¿Solicitar finalización de la chamba al empleador?')) return;
+
+    setGestionandoCierre(true);
+    setMensajeCierre(null);
+
+    try {
+      const res = await fetch(`/api/chambas/${chambaActivaTrabajador.chamba.id}/finalizar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'SOLICITAR_CIERRE' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'No se pudo solicitar el cierre.');
+
+      setChambaActivaTrabajador((prev) =>
+        prev
+          ? {
+              ...prev,
+              chamba: { ...prev.chamba, estado: 'ESPERANDO_APROBACION' },
+              puede_solicitar_cierre: false,
+            }
+          : prev
+      );
+      setMensajeCierre('Solicitud enviada. Ahora el empleador debe aprobar la finalización.');
+      router.refresh();
+    } catch (error: unknown) {
+      setMensajeCierre(error instanceof Error ? error.message : 'No se pudo solicitar el cierre.');
+    } finally {
+      setGestionandoCierre(false);
+    }
+  };
+
+  const handleAprobarCierreEmpleador = async () => {
+    if (!modalChambaData?.chamba.id) return;
+    if (!window.confirm('¿Confirmar finalización de esta chamba?')) return;
+
+    setGestionandoCierre(true);
+    setMensajeCierre(null);
+
+    try {
+      const res = await fetch(`/api/chambas/${modalChambaData.chamba.id}/finalizar`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'APROBAR_CIERRE' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'No se pudo finalizar la chamba.');
+
+      await handleAbrirDetalle(modalChambaData.chamba.id);
+      setMensajeCierre('Chamba finalizada. Ya puedes registrar tu valoración.');
+      router.refresh();
+    } catch (error: unknown) {
+      setMensajeCierre(error instanceof Error ? error.message : 'No se pudo finalizar la chamba.');
+    } finally {
+      setGestionandoCierre(false);
+    }
+  };
+
+  const abrirModalValoracion = () => {
+    setValoracionEstrellas(5);
+    setValoracionComentario('');
+    setErrorValoracion(null);
+    setModalValoracionAbierto(true);
+  };
+
+  const cerrarModalValoracion = () => {
+    if (valorando) return;
+    setModalValoracionAbierto(false);
+    setErrorValoracion(null);
+  };
+
+  const handleEnviarValoracion = async () => {
+    const detalleObjetivo = modalChambaData ?? chambaActivaTrabajador;
+    if (!detalleObjetivo?.receptor_valoracion_id) {
+      setErrorValoracion('No se pudo identificar a quién valorar.');
+      return;
+    }
+
+    setValorando(true);
+    setErrorValoracion(null);
+
+    try {
+      const res = await fetch('/api/valoraciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chamba_id: detalleObjetivo.chamba.id,
+          receptor_id: detalleObjetivo.receptor_valoracion_id,
+          estrellas: valoracionEstrellas,
+          comentario: valoracionComentario.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'No se pudo enviar la valoración.');
+
+      if (modalChambaData?.chamba.id) {
+        await handleAbrirDetalle(modalChambaData.chamba.id);
+      }
+
+      if (chambaActivaTrabajador?.chamba.id === detalleObjetivo.chamba.id) {
+        const refetch = await fetch(`/api/chambas/${detalleObjetivo.chamba.id}?userId=${userId}`);
+        if (refetch.ok) {
+          const updated = await refetch.json();
+          setChambaActivaTrabajador(updated);
+        }
+      }
+
+      setModalValoracionAbierto(false);
+      setMensajeCierre('Valoración registrada con éxito.');
+      router.refresh();
+    } catch (error: unknown) {
+      setErrorValoracion(error instanceof Error ? error.message : 'No se pudo enviar la valoración.');
+    } finally {
+      setValorando(false);
+    }
+  };
+
   const handleNavegarChambaActivaEmpleador = useCallback(
     (direccion: 'anterior' | 'siguiente') => {
       if (indiceChambaActivaModal < 0 || empleadorChambasActivas.length < 2) return;
@@ -889,6 +1027,89 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {modalValoracionAbierto && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4 py-6"
+          onClick={cerrarModalValoracion}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border-2 border-[#d7cc83] bg-[#f0e3aa] p-5 text-gray-900 shadow-[0_16px_48px_rgba(30,64,175,0.45)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-black">Valorar chamba finalizada</h3>
+                <p className="mt-1 text-xs font-semibold text-gray-700">
+                  Comparte tu experiencia sobre {modalChambaData?.receptor_valoracion_nombre || chambaActivaTrabajador?.receptor_valoracion_nombre || 'la contraparte'}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarModalValoracion}
+                className="rounded-full p-1 text-gray-500 hover:bg-black/10 hover:text-gray-700"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-3">
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-700">Estrellas</p>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((estrella) => (
+                  <button
+                    key={estrella}
+                    type="button"
+                    onClick={() => setValoracionEstrellas(estrella)}
+                    className={`text-2xl leading-none ${
+                      valoracionEstrellas >= estrella ? 'text-yellow-500' : 'text-gray-300'
+                    }`}
+                    aria-label={`${estrella} estrella${estrella > 1 ? 's' : ''}`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-700">Comentario (opcional)</p>
+              <textarea
+                value={valoracionComentario}
+                onChange={(e) => setValoracionComentario(e.target.value)}
+                maxLength={300}
+                rows={3}
+                placeholder="Cuéntanos cómo fue la experiencia..."
+                className="w-full resize-none rounded-lg border border-[#c9ba6a] bg-white/80 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300/50"
+              />
+            </div>
+
+            {errorValoracion ? <p className="mt-2 text-xs font-semibold text-red-600">{errorValoracion}</p> : null}
+
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={cerrarModalValoracion}
+                disabled={valorando}
+                className="liftable flex-1 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-extrabold text-gray-700 hover:bg-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleEnviarValoracion}
+                disabled={valorando}
+                className={`liftable flex-1 rounded-full px-4 py-2 text-xs font-extrabold text-white ${
+                  valorando ? 'cursor-not-allowed bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {valorando ? 'Enviando...' : 'Enviar valoración'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1016,6 +1237,45 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     Postulantes actuales:{' '}
                     <span className="font-extrabold text-blue-700">{modalChambaData.postulantes_count}</span>
                   </p>
+
+                  {modalChambaData.chamba.empleador_id === userId && modalChambaData.puede_aprobar_cierre && (
+                    <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-3">
+                      <p className="text-xs font-semibold text-emerald-900">
+                        El trabajador solicitó finalizar esta chamba.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAprobarCierreEmpleador}
+                        disabled={gestionandoCierre}
+                        className={`liftable mt-2 rounded-full px-4 py-1.5 text-xs font-extrabold text-white ${
+                          gestionandoCierre ? 'cursor-not-allowed bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'
+                        }`}
+                      >
+                        {gestionandoCierre ? 'Finalizando...' : 'Aprobar y finalizar'}
+                      </button>
+                    </div>
+                  )}
+
+                  {modalChambaData.chamba.estado === 'FINALIZADA' && (
+                    <div className="mt-4 rounded-xl border border-blue-300 bg-blue-50 p-3">
+                      <p className="text-xs font-semibold text-blue-900">
+                        {modalChambaData.ya_valore
+                          ? 'Ya registraste tu valoración para esta chamba.'
+                          : `Puedes valorar a ${modalChambaData.receptor_valoracion_nombre ?? 'la contraparte'}.`}
+                      </p>
+                      {!modalChambaData.ya_valore && modalChambaData.puede_valorar && (
+                        <button
+                          type="button"
+                          onClick={abrirModalValoracion}
+                          className="liftable mt-2 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-extrabold text-white hover:bg-blue-700"
+                        >
+                          Dejar valoración
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {mensajeCierre ? <p className="mt-2 text-xs font-semibold text-blue-700">{mensajeCierre}</p> : null}
                 </>
               ) : null}
             </div>
@@ -1601,6 +1861,51 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                   <p className="text-xs font-semibold text-blue-700">{mensajeEvidencias}</p>
                 ) : null}
               </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-[#d6c989] bg-white/70 p-4">
+              <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Cierre de chamba</h3>
+              {chambaActivaTrabajador.puede_solicitar_cierre ? (
+                <button
+                  type="button"
+                  onClick={handleSolicitarCierreTrabajador}
+                  disabled={gestionandoCierre}
+                  className={`liftable mt-3 rounded-full px-5 py-2 text-sm font-bold text-white ${
+                    gestionandoCierre ? 'cursor-not-allowed bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  {gestionandoCierre ? 'Enviando...' : 'Solicitar finalización'}
+                </button>
+              ) : (
+                <p className="mt-2 text-xs font-semibold text-gray-700">
+                  {chambaActivaTrabajador.chamba.estado === 'ESPERANDO_APROBACION'
+                    ? 'Ya solicitaste la finalización. Espera la aprobación del empleador.'
+                    : chambaActivaTrabajador.chamba.estado === 'FINALIZADA'
+                    ? 'Esta chamba ya fue finalizada.'
+                    : 'Cuando termines el trabajo, podrás solicitar la finalización.'}
+                </p>
+              )}
+
+              {chambaActivaTrabajador.chamba.estado === 'FINALIZADA' && (
+                <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <p className="text-xs font-bold text-blue-800">
+                    {chambaActivaTrabajador.ya_valore
+                      ? 'Ya registraste tu valoración para esta chamba.'
+                      : `Puedes valorar a ${chambaActivaTrabajador.receptor_valoracion_nombre ?? 'la contraparte'}.`}
+                  </p>
+                  {!chambaActivaTrabajador.ya_valore && chambaActivaTrabajador.puede_valorar && (
+                    <button
+                      type="button"
+                      onClick={abrirModalValoracion}
+                      className="liftable mt-2 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-extrabold text-white hover:bg-blue-700"
+                    >
+                      Valorar ahora
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {mensajeCierre ? <p className="mt-2 text-xs font-semibold text-blue-700">{mensajeCierre}</p> : null}
             </div>
           </section>
         ) : vista === 'listado' ? (

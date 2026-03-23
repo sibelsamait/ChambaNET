@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
+import { getAverageRatingsByUserIds } from '../../../../lib/ratings';
 
 interface GeoChamba {
   id: string;
@@ -20,6 +21,7 @@ interface GeoChamba {
 
 interface GeoChambaRow {
   id: string;
+  empleador_id: string;
   titulo: string;
   descripcion: string;
   pago_clp: number;
@@ -80,6 +82,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
           id,
+          empleador_id,
           titulo,
           descripcion,
           pago_clp,
@@ -89,8 +92,7 @@ export async function GET(request: NextRequest) {
           ubicacion_lng,
           empleador:usuarios (
             nombres,
-            apellido_paterno,
-            promedio_valoracion
+            apellido_paterno
           )
         `
       )
@@ -103,6 +105,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    const empleadorIds = Array.from(new Set(((data || []) as GeoChambaRow[]).map((row) => row.empleador_id)));
+    const ratingMap = await getAverageRatingsByUserIds(empleadorIds);
+
     const normalizedRows: GeoChamba[] = ((data || []) as GeoChambaRow[])
       .filter((row) => row.ubicacion_lat !== null && row.ubicacion_lng !== null)
       .map((row) => ({
@@ -114,7 +119,12 @@ export async function GET(request: NextRequest) {
         direccion_texto: row.direccion_texto,
         ubicacion_lat: row.ubicacion_lat as number,
         ubicacion_lng: row.ubicacion_lng as number,
-        empleador: row.empleador?.[0] ?? null,
+        empleador: row.empleador?.[0]
+          ? {
+              ...row.empleador[0],
+              promedio_valoracion: ratingMap.get(row.empleador_id) ?? null,
+            }
+          : null,
       }));
 
     const filteredRows = normalizedRows

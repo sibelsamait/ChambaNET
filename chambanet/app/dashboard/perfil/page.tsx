@@ -37,7 +37,7 @@ export default async function PerfilPage() {
 
   const { data: perfilUsuario } = await supabase
     .from('usuarios')
-    .select('nombres, apellido_paterno, apellido_materno, rut, promedio_valoracion, email, telefono, fecha_nacimiento, direccion_completa')
+    .select('nombres, apellido_paterno, apellido_materno, rut, email, telefono, fecha_nacimiento, direccion_completa')
     .eq('id', userId)
     .single();
 
@@ -46,6 +46,40 @@ export default async function PerfilPage() {
     .select('image_data_url')
     .eq('user_id', userId)
     .maybeSingle();
+
+  const { data: valoracionesRaw } = await supabase
+    .from('valoraciones')
+    .select('estrellas, comentario, emisor_id, creado_en')
+    .eq('receptor_id', userId)
+    .order('creado_en', { ascending: false });
+
+  const emisorIds = Array.from(new Set((valoracionesRaw || []).map((v) => v.emisor_id).filter(Boolean)));
+  const { data: emisores } = emisorIds.length
+    ? await supabase
+        .from('usuarios')
+        .select('id, nombres, apellido_paterno')
+        .in('id', emisorIds)
+    : { data: [] as Array<{ id: string; nombres: string; apellido_paterno: string | null }> };
+
+  const mapaEmisores = new Map((emisores || []).map((e) => [e.id, e]));
+
+  const valoraciones = (valoracionesRaw || []).map((valoracion) => {
+    const emisor = mapaEmisores.get(valoracion.emisor_id);
+    const nombre = emisor
+      ? `${emisor.nombres?.split(' ')[0] ?? ''} ${emisor.apellido_paterno?.[0] ?? ''}.`.trim()
+      : 'Usuario';
+
+    return {
+      estrellas: Number(valoracion.estrellas) || 0,
+      comentario: valoracion.comentario ?? null,
+      emisorNombre: nombre,
+    };
+  });
+
+  const promedioValoraciones =
+    valoraciones.length > 0
+      ? valoraciones.reduce((acc, item) => acc + item.estrellas, 0) / valoraciones.length
+      : null;
 
   const { count: activePosts } = await supabase
     .from('chambas')
@@ -70,8 +104,8 @@ export default async function PerfilPage() {
     .join(' ')
     .trim();
   const ratingTexto =
-    typeof perfilUsuario?.promedio_valoracion === 'number'
-      ? perfilUsuario.promedio_valoracion.toFixed(1).replace('.', ',')
+    typeof promedioValoraciones === 'number' && Number.isFinite(promedioValoraciones)
+      ? promedioValoraciones.toFixed(1).replace('.', ',')
       : 'Sin valoración';
 
   const direccion = parseDireccionPerfil(perfilUsuario?.direccion_completa);
@@ -82,7 +116,7 @@ export default async function PerfilPage() {
       <Sidebar
         nombres={perfilUsuario?.nombres}
         apellidoPaterno={perfilUsuario?.apellido_paterno}
-        estrellas={perfilUsuario?.promedio_valoracion}
+        estrellas={promedioValoraciones ?? undefined}
         imagenUrl={imagenUsuario?.image_data_url}
       />
       <main className="min-w-0 flex-1 overflow-y-auto bg-blue-500/95">
@@ -106,6 +140,7 @@ export default async function PerfilPage() {
             regionId: direccion.region_id ?? '',
             comunaId: direccion.comuna_id ?? '',
           }}
+          valoraciones={valoraciones}
           activePosts={activePosts ?? 0}
           completedPosts={completedPosts ?? 0}
         />

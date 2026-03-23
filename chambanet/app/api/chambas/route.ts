@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase'; // Asegúrate de que sube 3 niveles hasta la carpeta lib
+import { getAverageRatingsByUserIds } from '../../../lib/ratings';
 
 type ChambaPayload = {
   titulo?: string;
@@ -130,8 +131,7 @@ export async function GET() {
         *,
         empleador:usuarios (
           nombres,
-          apellido_paterno,
-          promedio_valoracion
+          apellido_paterno
         )
       `)
       .eq('estado', 'PUBLICADA')
@@ -141,10 +141,30 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    const empleadorIds = Array.from(new Set((data || []).map((item) => item.empleador_id).filter(Boolean)));
+    const ratingMap = await getAverageRatingsByUserIds(empleadorIds);
+
+    const chambasConRating = (data || []).map((item) => {
+      const promedio = ratingMap.get(item.empleador_id) ?? null;
+      const empleadorRaw = item.empleador;
+
+      if (Array.isArray(empleadorRaw)) {
+        return {
+          ...item,
+          empleador: empleadorRaw.map((emp) => ({ ...emp, promedio_valoracion: promedio })),
+        };
+      }
+
+      return {
+        ...item,
+        empleador: empleadorRaw ? { ...empleadorRaw, promedio_valoracion: promedio } : empleadorRaw,
+      };
+    });
+
     return NextResponse.json({ 
       mensaje: 'Chambas recuperadas con éxito',
-      total: data.length,
-      chambas: data 
+      total: chambasConRating.length,
+      chambas: chambasConRating 
     }, { status: 200 });
 
   } catch {

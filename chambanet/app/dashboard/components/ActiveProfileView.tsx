@@ -51,6 +51,11 @@ interface ActiveProfileViewProps {
     comunaId?: string;
     regionId?: string;
   };
+  valoraciones: {
+    estrellas: number;
+    comentario: string | null;
+    emisorNombre: string;
+  }[];
   activePosts: number;
   completedPosts: number;
 }
@@ -141,6 +146,7 @@ export default function ActiveProfileView({
   fechaNacimiento,
   memberSince,
   direccion,
+  valoraciones,
   activePosts,
   completedPosts,
 }: ActiveProfileViewProps) {
@@ -200,13 +206,6 @@ export default function ActiveProfileView({
     () => getCommuneOptionsByRegionId(editForm.regionId),
     [editForm.regionId]
   );
-  const reviewCards = [
-    { quote: 'Excelente paga', author: 'Paulo I.' },
-    { quote: 'Buena colación', author: 'Barto J.' },
-    { quote: 'Trato flexible', author: 'Augusta P.' },
-    { quote: 'Puntual y claro', author: 'Claudio M.' },
-    { quote: 'Buen ambiente', author: 'Marta R.' },
-  ];
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -739,17 +738,27 @@ export default function ActiveProfileView({
             </div>
 
             <div className="mt-6 flex gap-4 overflow-x-auto pb-4 [scrollbar-color:#76b0fb_transparent] [scrollbar-width:thin]">
-              {reviewCards.map((review, index) => (
-                <article
-                  key={`${review.author}-${index}`}
-                  className="shrink-0 rounded-3xl bg-[#76b0fb] px-4 py-5 text-center text-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.20)] w-[150px] sm:w-[168px]"
-                >
-                  <p className="text-4xl leading-none">🏅</p>
-                  <p className="mt-2 text-lg font-black">5</p>
-                  <p className="mt-2 text-sm font-semibold italic leading-snug">&ldquo;{review.quote}&rdquo;</p>
-                  <p className="mt-1 text-sm font-semibold">{review.author}</p>
-                </article>
-              ))}
+              {valoraciones.length === 0 ? (
+                <p className="text-sm font-semibold text-blue-100">Aún no tienes valoraciones.</p>
+              ) : (
+                valoraciones.map((review, index) => (
+                  <article
+                    key={`${review.emisorNombre}-${index}`}
+                    className="shrink-0 rounded-3xl bg-[#76b0fb] px-4 py-5 text-center text-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.20)] w-[150px] sm:w-[168px]"
+                  >
+                    <p className="text-4xl leading-none">🏅</p>
+                    <p className="mt-2 text-lg font-black">{review.estrellas}</p>
+                    <p className="mt-1 text-xs font-bold text-yellow-700">
+                      {'★'.repeat(Math.max(0, Math.min(5, review.estrellas)))}
+                      {'☆'.repeat(Math.max(0, 5 - Math.max(0, Math.min(5, review.estrellas))))}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold italic leading-snug">
+                      {review.comentario ? `“${review.comentario}”` : 'Sin comentario'}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold">{review.emisorNombre}</p>
+                  </article>
+                ))
+              )}
             </div>
           </div>
         </div>

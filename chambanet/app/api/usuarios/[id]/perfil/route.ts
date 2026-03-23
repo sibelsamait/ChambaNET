@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../../../lib/supabase';
+import { getAverageRatingsByUserIds } from '../../../../../lib/ratings';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -10,7 +11,7 @@ export async function GET(_request: Request, context: RouteContext) {
     // Datos del usuario
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nombres, apellido_paterno, apellido_materno, rut, promedio_valoracion')
+      .select('id, nombres, apellido_paterno, apellido_materno, rut')
       .eq('id', userId)
       .maybeSingle();
 
@@ -69,13 +70,15 @@ export async function GET(_request: Request, context: RouteContext) {
       });
     }
 
+    const ratingMap = await getAverageRatingsByUserIds([userId]);
+
     return NextResponse.json({
       id: usuario.id,
       nombres: usuario.nombres,
       apellido_paterno: usuario.apellido_paterno,
       apellido_materno: usuario.apellido_materno ?? null,
       rut: usuario.rut ?? null,
-      promedio_valoracion: usuario.promedio_valoracion ?? null,
+      promedio_valoracion: ratingMap.get(userId) ?? null,
       imagen_url: imagenData?.image_data_url ?? null,
       trabajos_completados: trabajosCompletados,
       valoraciones,
