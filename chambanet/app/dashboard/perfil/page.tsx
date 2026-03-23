@@ -236,6 +236,7 @@ export default async function PerfilPage() {
         <ActiveProfileView
           fullName={nombreCompleto || nombreCorto || 'Usuario'}
           ratingText={ratingTexto}
+          isSupportAdmin={isSupportAdmin}
           initialImageUrl={imagenUsuario?.image_data_url}
           rut={perfilUsuario?.rut}
           nombres={perfilUsuario?.nombres ?? ''}

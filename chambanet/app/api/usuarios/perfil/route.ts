@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { supabase } from '../../../../lib/supabase';
 import { normalizarFechaISO } from '../../../../utils/validations';
-import { normalizeRut } from '@/lib/supportAuth';
+import { isSupportAdminUser, normalizeRut } from '@/lib/supportAuth';
+
+function isValidSecret(inputSecret: string, configuredSecret: string): boolean {
+  const a = Buffer.from(inputSecret, 'utf8');
+  const b = Buffer.from(configuredSecret, 'utf8');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 type DireccionPayload = {
   calle?: string;
@@ -73,7 +81,7 @@ export async function PATCH(request: Request) {
 
     const { data: usuarioActual } = await supabase
       .from('usuarios')
-      .select('rut')
+      .select('email, rut')
       .eq('id', userId)
       .maybeSingle();
 
@@ -83,6 +91,22 @@ export async function PATCH(request: Request) {
         { error: 'Tu perfil no tiene RUT válido para configurar cuenta bancaria.' },
         { status: 409 }
       );
+    }
+
+    const isSupportAdmin = isSupportAdminUser(usuarioActual?.email, usuarioActual?.rut);
+    if (isSupportAdmin) {
+      const configuredSecret = String(process.env.COMPANY_BANK_CONFIG_SECRET || '').trim();
+      const inputSecret = String(body?.clave_secreta_admin || '').trim();
+
+      if (!configuredSecret || !inputSecret || !isValidSecret(inputSecret, configuredSecret)) {
+        return NextResponse.json(
+          {
+            error:
+              'Debes ingresar la contraseña secreta correcta para editar información del usuario admin.',
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const nombres = String(body?.nombres || '').trim();

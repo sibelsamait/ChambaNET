@@ -35,6 +35,7 @@ async function readFileAsDataUrl(file: File) {
 interface ActiveProfileViewProps {
   fullName: string;
   ratingText: string;
+  isSupportAdmin: boolean;
   initialImageUrl?: string | null;
   rut?: string | null;
   nombres: string;
@@ -202,6 +203,7 @@ function resolveCommuneName(communeId?: string, fallback?: string) {
 export default function ActiveProfileView({
   fullName,
   ratingText,
+  isSupportAdmin,
   initialImageUrl,
   rut,
   nombres,
@@ -231,6 +233,7 @@ export default function ActiveProfileView({
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [adminSecret, setAdminSecret] = useState('');
   const [profileData, setProfileData] = useState<ProfileFormState>({
     nombres,
     apellidoPaterno,
@@ -342,6 +345,11 @@ export default function ActiveProfileView({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (isSupportAdmin && !adminSecret.trim()) {
+      setErrorMsg('Debes ingresar la contraseña secreta para editar información de admin.');
+      return;
+    }
+
     if (!selectedFile) {
       setErrorMsg('Selecciona una imagen antes de actualizar tu foto.');
       return;
@@ -357,6 +365,9 @@ export default function ActiveProfileView({
 
       const response = await fetch('/api/usuarios/imagen', {
         method: 'POST',
+        headers: isSupportAdmin
+          ? { 'x-admin-edit-secret': adminSecret.trim() }
+          : undefined,
         body: formData,
       });
 
@@ -381,6 +392,11 @@ export default function ActiveProfileView({
   };
 
   const handleDeleteImage = async () => {
+    if (isSupportAdmin && !adminSecret.trim()) {
+      setErrorMsg('Debes ingresar la contraseña secreta para editar información de admin.');
+      return;
+    }
+
     if (!savedImageUrl) {
       setErrorMsg('No tienes una imagen cargada para eliminar.');
       return;
@@ -393,6 +409,9 @@ export default function ActiveProfileView({
     try {
       const response = await fetch('/api/usuarios/imagen', {
         method: 'DELETE',
+        headers: isSupportAdmin
+          ? { 'x-admin-edit-secret': adminSecret.trim() }
+          : undefined,
       });
 
       const data = await response.json();
@@ -469,6 +488,10 @@ export default function ActiveProfileView({
     setSuccessMsg(null);
 
     try {
+      if (isSupportAdmin && !adminSecret.trim()) {
+        throw new Error('Debes ingresar la contraseña secreta para editar información de admin.');
+      }
+
       const response = await fetch('/api/usuarios/perfil', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -495,6 +518,7 @@ export default function ActiveProfileView({
             titularRut: editForm.titularRut,
             emailPago: editForm.emailPago,
           },
+          clave_secreta_admin: isSupportAdmin ? adminSecret.trim() : undefined,
         }),
       });
 
@@ -685,6 +709,18 @@ export default function ActiveProfileView({
                     className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-blue-400"
                   />
                 </div>
+
+                {isSupportAdmin ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    <input
+                      type="password"
+                      value={adminSecret}
+                      onChange={(event) => setAdminSecret(event.target.value)}
+                      placeholder="Contraseña secreta de administrador"
+                      className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-red-400"
+                    />
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <input
