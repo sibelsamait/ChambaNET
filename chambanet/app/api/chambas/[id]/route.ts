@@ -46,6 +46,14 @@ export async function GET(request: Request, context: RouteContext) {
           .maybeSingle()
       : { data: null };
 
+    const { data: trabajadorActivoImagen } = trabajadorActivoId
+      ? await supabase
+          .from('user_imagenes')
+          .select('image_data_url')
+          .eq('user_id', trabajadorActivoId)
+          .maybeSingle()
+      : { data: null };
+
     // 3. ¿Ya postuló el usuario actual?
     let yaPostule = false;
     let postulacionId: string | null = null;
@@ -207,6 +215,7 @@ export async function GET(request: Request, context: RouteContext) {
             telefono: trabajadorActivoPerfil.telefono ?? null,
             fecha_nacimiento: trabajadorActivoPerfil.fecha_nacimiento ?? null,
             direccion_completa: trabajadorActivoPerfil.direccion_completa ?? null,
+            imagen_url: trabajadorActivoImagen?.image_data_url ?? null,
           }
         : null,
       puede_solicitar_cierre: puedeSolicitarCierre,

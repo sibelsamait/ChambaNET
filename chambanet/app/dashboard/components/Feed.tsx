@@ -162,6 +162,7 @@ interface ChambaDetalleFull {
       comuna_nombre?: string;
       region_nombre?: string;
     } | null;
+    imagen_url?: string | null;
   } | null;
   puede_solicitar_cierre?: boolean;
   puede_aprobar_cierre?: boolean;
@@ -245,6 +246,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [mensajeContacto, setMensajeContacto] = useState<string | null>(null);
   const [gestionandoCierre, setGestionandoCierre] = useState(false);
   const [mensajeCierre, setMensajeCierre] = useState<string | null>(null);
+  const [perfilImagePreview, setPerfilImagePreview] = useState<{ url: string; nombre: string } | null>(null);
   const [modalValoracionAbierto, setModalValoracionAbierto] = useState(false);
   const [valoracionEstrellas, setValoracionEstrellas] = useState(5);
   const [valoracionComentario, setValoracionComentario] = useState('');
@@ -1155,11 +1157,41 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
       ['EN_OBRA', 'ESPERANDO_APROBACION'].includes(chambaActivaEmpleador.chamba.estado)
   );
 
+  const abrirPreviewPerfil = (url?: string | null, nombre?: string) => {
+    if (!url) return;
+    setPerfilImagePreview({ url, nombre: nombre || 'Usuario' });
+  };
+
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-blue-500/95 text-white">
       <div className="fixed right-4 top-4 z-40">
         <NotificationsBell />
       </div>
+
+      {perfilImagePreview ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 px-4 py-6"
+          onClick={() => setPerfilImagePreview(null)}
+        >
+          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-bold text-white">Foto de perfil de {perfilImagePreview.nombre}</p>
+              <button
+                type="button"
+                onClick={() => setPerfilImagePreview(null)}
+                className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white hover:bg-white/25"
+              >
+                Cerrar
+              </button>
+            </div>
+            <img
+              src={perfilImagePreview.url}
+              alt={`Foto ampliada de ${perfilImagePreview.nombre}`}
+              className="max-h-[78vh] w-full rounded-2xl border border-white/25 bg-black/20 object-contain"
+            />
+          </div>
+        </div>
+      ) : null}
 
       {/* Panel perfil completo del trabajador (z-[60], sobre el modal de chamba) */}
       {(perfilTrabajador || cargandoPerfil) && (
@@ -1187,13 +1219,25 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 <p className="py-8 text-center text-sm text-gray-500">Cargando perfil…</p>
               ) : perfilTrabajador ? (
                 <div className="flex items-center gap-4">
-                  <Avatar
-                    imageUrl={perfilTrabajador.imagen_url}
-                    name={`${perfilTrabajador.nombres} ${perfilTrabajador.apellido_paterno}`}
-                    alt="Foto del trabajador"
-                    className="h-20 w-20 shrink-0 rounded-full border-2 border-blue-200 object-cover"
-                    fallbackClassName="text-xl"
-                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      abrirPreviewPerfil(
+                        perfilTrabajador.imagen_url,
+                        `${perfilTrabajador.nombres} ${perfilTrabajador.apellido_paterno}`
+                      )
+                    }
+                    className="rounded-full"
+                    title={perfilTrabajador.imagen_url ? 'Ver imagen' : 'Sin imagen cargada'}
+                  >
+                    <Avatar
+                      imageUrl={perfilTrabajador.imagen_url}
+                      name={`${perfilTrabajador.nombres} ${perfilTrabajador.apellido_paterno}`}
+                      alt="Foto del trabajador"
+                      className="h-20 w-20 shrink-0 rounded-full border-2 border-blue-200 object-cover cursor-zoom-in"
+                      fallbackClassName="text-xl"
+                    />
+                  </button>
                   <div className="space-y-0.5">
                     <p className="text-base font-extrabold leading-tight text-black">
                       {perfilTrabajador.nombres} {perfilTrabajador.apellido_paterno}
@@ -1717,13 +1761,25 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                     <h3 className="mb-4 text-center text-lg font-extrabold tracking-tight">Perfil del Empleador</h3>
                     <div className="mb-4 flex items-center gap-4">
                       <div className="flex flex-col items-center gap-1">
-                        <Avatar
-                          imageUrl={modalChambaData.empleador.imagen_url}
-                          name={`${modalChambaData.empleador.nombres} ${modalChambaData.empleador.apellido_paterno}`}
-                          alt="Foto del empleador"
-                          className="h-20 w-20 rounded-full border-4 border-white/50 object-cover"
-                          fallbackClassName="text-xl"
-                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            abrirPreviewPerfil(
+                              modalChambaData.empleador.imagen_url,
+                              `${modalChambaData.empleador.nombres} ${modalChambaData.empleador.apellido_paterno}`
+                            )
+                          }
+                          className="rounded-full"
+                          title={modalChambaData.empleador.imagen_url ? 'Ver imagen' : 'Sin imagen cargada'}
+                        >
+                          <Avatar
+                            imageUrl={modalChambaData.empleador.imagen_url}
+                            name={`${modalChambaData.empleador.nombres} ${modalChambaData.empleador.apellido_paterno}`}
+                            alt="Foto del empleador"
+                            className="h-20 w-20 rounded-full border-4 border-white/50 object-cover cursor-zoom-in"
+                            fallbackClassName="text-xl"
+                          />
+                        </button>
                         <p className="text-xl font-black">
                           ☆{' '}
                           {typeof modalChambaData.empleador.promedio_valoracion === 'number'
@@ -2328,9 +2384,18 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
                 <h3 className="text-sm font-extrabold uppercase tracking-wide text-gray-700">Trabajador activo</h3>
                 {chambaActivaEmpleador.trabajador_activo ? (
                   <div className="mt-2 space-y-3">
-                    <p className="text-sm font-bold text-gray-900">
-                      {chambaActivaEmpleador.trabajador_activo.nombres} {chambaActivaEmpleador.trabajador_activo.apellido_paterno}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        imageUrl={chambaActivaEmpleador.trabajador_activo.imagen_url}
+                        name={`${chambaActivaEmpleador.trabajador_activo.nombres} ${chambaActivaEmpleador.trabajador_activo.apellido_paterno}`}
+                        alt="Foto del trabajador activo"
+                        className="h-12 w-12 rounded-full border-2 border-blue-200 object-cover"
+                        fallbackClassName="text-sm"
+                      />
+                      <p className="text-sm font-bold text-gray-900">
+                        {chambaActivaEmpleador.trabajador_activo.nombres} {chambaActivaEmpleador.trabajador_activo.apellido_paterno}
+                      </p>
+                    </div>
                     {chambaActivaEmpleador.trabajador_activo.rut ? (
                       <p className="text-xs font-semibold text-gray-700">{chambaActivaEmpleador.trabajador_activo.rut}</p>
                     ) : null}
