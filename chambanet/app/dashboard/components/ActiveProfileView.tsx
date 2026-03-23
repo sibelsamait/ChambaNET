@@ -57,6 +57,13 @@ interface ActiveProfileViewProps {
     comentario: string | null;
     emisorNombre: string;
   }[];
+  valoracionesRealizadas: {
+    estrellas: number;
+    comentario: string | null;
+    receptorNombre: string;
+    receptorRol: string;
+    chambaTitulo: string;
+  }[];
   activePosts: number;
   completedPosts: number;
 }
@@ -192,6 +199,7 @@ export default function ActiveProfileView({
   memberSince,
   direccion,
   valoraciones,
+  valoracionesRealizadas,
   activePosts,
   completedPosts,
 }: ActiveProfileViewProps) {
@@ -778,7 +786,7 @@ export default function ActiveProfileView({
                 ))}
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <div id="resumen-trabajos" className="mt-5 flex flex-wrap items-center justify-between gap-3 scroll-mt-24">
                 <div className="flex gap-3 text-xs font-bold sm:text-sm">
                   <span className="rounded-full bg-white/20 px-3 py-1.5">Activas: {activePosts}</span>
                   <span className="rounded-full bg-white/20 px-3 py-1.5">Completadas: {completedPosts}</span>
@@ -794,35 +802,68 @@ export default function ActiveProfileView({
             </div>
           </div>
 
-          <div className="px-5 pb-5 pt-6 sm:px-8 sm:pb-7 sm:pt-8">
+          <div id="valoraciones" className="px-5 pb-5 pt-6 sm:px-8 sm:pb-7 sm:pt-8 scroll-mt-24">
             <h2 className="text-3xl font-extrabold text-white sm:text-[2.05rem]">Valoraciones</h2>
 
             <div className="mt-5 inline-flex rounded-2xl bg-[#f0e3aa] px-5 py-3 text-black">
               <p className="text-4xl font-extrabold leading-none">☆ {ratingText}</p>
             </div>
 
-            <div className="mt-6 flex gap-4 overflow-x-auto pb-4 [scrollbar-color:#76b0fb_transparent] [scrollbar-width:thin]">
-              {valoraciones.length === 0 ? (
-                <p className="text-sm font-semibold text-blue-100">Aún no tienes valoraciones.</p>
-              ) : (
-                valoraciones.map((review, index) => (
-                  <article
-                    key={`${review.emisorNombre}-${index}`}
-                    className="shrink-0 rounded-3xl bg-[#76b0fb] px-4 py-5 text-center text-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.20)] w-[150px] sm:w-[168px]"
-                  >
-                    <p className="text-4xl leading-none">🏅</p>
-                    <p className="mt-2 text-lg font-black">{review.estrellas}</p>
-                    <p className="mt-1 text-xs font-bold text-yellow-700">
-                      {'★'.repeat(Math.max(0, Math.min(5, review.estrellas)))}
-                      {'☆'.repeat(Math.max(0, 5 - Math.max(0, Math.min(5, review.estrellas))))}
-                    </p>
-                    <p className="mt-2 text-sm font-semibold italic leading-snug">
-                      {review.comentario ? `“${review.comentario}”` : 'Sin comentario'}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold">{review.emisorNombre}</p>
-                  </article>
-                ))
-              )}
+            <div className="mt-6">
+              <h3 className="text-base font-extrabold text-white">Recibidas</h3>
+              <div className="mt-3 flex gap-4 overflow-x-auto pb-4 [scrollbar-color:#76b0fb_transparent] [scrollbar-width:thin]">
+                {valoraciones.length === 0 ? (
+                  <p className="text-sm font-semibold text-blue-100">Aún no tienes valoraciones recibidas.</p>
+                ) : (
+                  valoraciones.map((review, index) => (
+                    <article
+                      key={`recibida-${review.emisorNombre}-${index}`}
+                      className="shrink-0 rounded-3xl bg-[#76b0fb] px-4 py-5 text-center text-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.20)] w-[150px] sm:w-[168px]"
+                    >
+                      <p className="text-4xl leading-none">🏅</p>
+                      <p className="mt-2 text-lg font-black">{review.estrellas}</p>
+                      <p className="mt-1 text-xs font-bold text-yellow-700">
+                        {'★'.repeat(Math.max(0, Math.min(5, review.estrellas)))}
+                        {'☆'.repeat(Math.max(0, 5 - Math.max(0, Math.min(5, review.estrellas))))}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold italic leading-snug">
+                        {review.comentario ? `“${review.comentario}”` : 'Sin comentario'}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold">{review.emisorNombre}</p>
+                    </article>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mt-2">
+              <h3 className="text-base font-extrabold text-white">Realizadas</h3>
+              <div className="mt-3 flex gap-4 overflow-x-auto pb-4 [scrollbar-color:#76b0fb_transparent] [scrollbar-width:thin]">
+                {valoracionesRealizadas.length === 0 ? (
+                  <p className="text-sm font-semibold text-blue-100">Aún no has realizado valoraciones.</p>
+                ) : (
+                  valoracionesRealizadas.map((review, index) => (
+                    <article
+                      key={`realizada-${review.receptorNombre}-${index}`}
+                      className="shrink-0 rounded-3xl bg-[#9dc3ff] px-4 py-5 text-center text-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.30)] w-[180px] sm:w-[210px]"
+                    >
+                      <p className="text-xs font-extrabold uppercase tracking-wide text-blue-900">
+                        A {review.receptorRol}
+                      </p>
+                      <p className="mt-1 text-sm font-black leading-tight">{review.receptorNombre}</p>
+                      <p className="mt-1 text-[11px] font-semibold text-blue-900">{review.chambaTitulo}</p>
+                      <p className="mt-2 text-lg font-black">{review.estrellas}</p>
+                      <p className="mt-1 text-xs font-bold text-yellow-700">
+                        {'★'.repeat(Math.max(0, Math.min(5, review.estrellas)))}
+                        {'☆'.repeat(Math.max(0, 5 - Math.max(0, Math.min(5, review.estrellas))))}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold italic leading-snug">
+                        {review.comentario ? `“${review.comentario}”` : 'Sin comentario'}
+                      </p>
+                    </article>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

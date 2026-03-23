@@ -56,6 +56,12 @@ export default async function PerfilPage() {
     .eq('receptor_id', userId)
     .order('creado_en', { ascending: false });
 
+  const { data: valoracionesRealizadasRaw } = await supabase
+    .from('valoraciones')
+    .select('estrellas, comentario, receptor_id, chamba_id, creado_en')
+    .eq('emisor_id', userId)
+    .order('creado_en', { ascending: false });
+
   const emisorIds = Array.from(new Set((valoracionesRaw || []).map((v) => v.emisor_id).filter(Boolean)));
   const { data: emisores } = emisorIds.length
     ? await supabase
@@ -76,6 +82,52 @@ export default async function PerfilPage() {
       estrellas: Number(valoracion.estrellas) || 0,
       comentario: valoracion.comentario ?? null,
       emisorNombre: nombre,
+    };
+  });
+
+  const receptorIds = Array.from(
+    new Set((valoracionesRealizadasRaw || []).map((v) => v.receptor_id).filter(Boolean))
+  );
+  const chambaIdsValoraciones = Array.from(
+    new Set((valoracionesRealizadasRaw || []).map((v) => v.chamba_id).filter(Boolean))
+  );
+
+  const { data: receptores } = receptorIds.length
+    ? await supabase
+        .from('usuarios')
+        .select('id, nombres, apellido_paterno')
+        .in('id', receptorIds)
+    : { data: [] as Array<{ id: string; nombres: string; apellido_paterno: string | null }> };
+
+  const { data: chambasValoradas } = chambaIdsValoraciones.length
+    ? await supabase
+        .from('chambas')
+        .select('id, empleador_id, titulo')
+        .in('id', chambaIdsValoraciones)
+    : { data: [] as Array<{ id: string; empleador_id: string; titulo: string }> };
+
+  const mapaReceptores = new Map((receptores || []).map((item) => [item.id, item]));
+  const mapaChambas = new Map((chambasValoradas || []).map((item) => [item.id, item]));
+
+  const valoracionesRealizadas = (valoracionesRealizadasRaw || []).map((valoracion) => {
+    const receptor = mapaReceptores.get(valoracion.receptor_id);
+    const nombreReceptor = receptor
+      ? `${receptor.nombres?.split(' ')[0] ?? ''} ${receptor.apellido_paterno ?? ''}`.trim()
+      : 'Usuario';
+
+    const chamba = mapaChambas.get(valoracion.chamba_id);
+    const receptorRol = chamba
+      ? chamba.empleador_id === valoracion.receptor_id
+        ? 'empleador'
+        : 'trabajador'
+      : 'usuario';
+
+    return {
+      estrellas: Number(valoracion.estrellas) || 0,
+      comentario: valoracion.comentario ?? null,
+      receptorNombre: nombreReceptor,
+      receptorRol,
+      chambaTitulo: chamba?.titulo ?? 'Chamba',
     };
   });
 
@@ -145,6 +197,7 @@ export default async function PerfilPage() {
             comunaId: direccion.comuna_id ?? '',
           }}
           valoraciones={valoraciones}
+          valoracionesRealizadas={valoracionesRealizadas}
           activePosts={activePosts ?? 0}
           completedPosts={completedPosts ?? 0}
         />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Avatar from './Avatar';
 import NotificationsBell from './NotificationsBell';
@@ -144,6 +144,7 @@ interface EvidenciaMeta {
 
 export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [vista, setVista] = useState<'listado' | 'mapa'>('listado');
   const [postulandoId, setPostulandoId] = useState<string | null>(null);
   const [chambasList, setChambasList] = useState<Chamba[]>(chambas);
@@ -157,6 +158,7 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
   const [cargandoGPS, setCargandoGPS] = useState(false);
   const [localidades, setLocalidades] = useState<Map<string, string>>(new Map());
   const [misChambas, setMisChambas] = useState<MiChambaItem[]>([]);
+  const [filtroMisChambas, setFiltroMisChambas] = useState<'todas' | 'postulaciones' | 'publicaciones'>('todas');
   const [mostrarMisChambas, setMostrarMisChambas] = useState(false);
   const [cargandoMisChambas, setCargandoMisChambas] = useState(false);
   const [destacadoId, setDestacadoId] = useState<string | null>(null);
@@ -509,14 +511,8 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     setMostrarFormulario(true);
   };
 
-  const handleVerMisChambas = useCallback(async () => {
-    if (mostrarMisChambas) {
-      setMostrarMisChambas(false);
-      return;
-    }
-    setMostrarMisChambas(true);
+  const cargarMisChambas = useCallback(async () => {
     setCargandoMisChambas(true);
-
     try {
       const res = await fetch(`/api/chambas/mis-chambas?userId=${userId}`);
       const data = await res.json();
@@ -526,7 +522,39 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
     } finally {
       setCargandoMisChambas(false);
     }
-  }, [mostrarMisChambas, userId]);
+  }, [userId]);
+
+  const handleVerMisChambas = useCallback(async () => {
+    if (mostrarMisChambas) {
+      setMostrarMisChambas(false);
+      return;
+    }
+    setFiltroMisChambas('todas');
+    setMostrarMisChambas(true);
+    await cargarMisChambas();
+  }, [mostrarMisChambas, cargarMisChambas]);
+
+  useEffect(() => {
+    const panel = searchParams.get('panel');
+    if (panel !== 'postulaciones' && panel !== 'publicaciones') return;
+
+    setVista('listado');
+    setMostrarMisChambas(true);
+    setFiltroMisChambas(panel === 'postulaciones' ? 'postulaciones' : 'publicaciones');
+    void cargarMisChambas();
+  }, [searchParams, cargarMisChambas]);
+
+  const misChambasFiltradas = useMemo(() => {
+    if (filtroMisChambas === 'postulaciones') {
+      return misChambas.filter((item) => item.rol === 'postulante');
+    }
+
+    if (filtroMisChambas === 'publicaciones') {
+      return misChambas.filter((item) => item.rol === 'empleador');
+    }
+
+    return misChambas;
+  }, [misChambas, filtroMisChambas]);
 
   const handleClickMiChamba = useCallback((item: MiChambaItem) => {
     setMostrarMisChambas(false);
@@ -1927,11 +1955,11 @@ export default function Feed({ chambas, userId }: { chambas: Chamba[]; userId: s
 
                   {cargandoMisChambas ? (
                     <p className="px-4 py-4 text-xs text-gray-400">Cargando…</p>
-                  ) : misChambas.length === 0 ? (
+                  ) : misChambasFiltradas.length === 0 ? (
                     <p className="px-4 py-4 text-xs text-gray-500">No tienes chambas activas.</p>
                   ) : (
                     <ul className="max-h-72 overflow-y-auto">
-                      {misChambas.map((item) => (
+                      {misChambasFiltradas.map((item) => (
                         <li key={item.id} className="border-b border-gray-50 last:border-0">
                           <button
                             type="button"
