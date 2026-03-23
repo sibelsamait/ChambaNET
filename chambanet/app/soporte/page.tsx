@@ -3,7 +3,9 @@ import { createSupabaseServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import Sidebar from '@/app/dashboard/components/Sidebar';
 import SupportConsole from './components/SupportConsole';
+import SoporteTabs from './components/SoporteTabs';
 import { isSupportAdminUser } from '@/lib/supportAuth';
+import { Pago } from '@/types/pagos';
 
 export default async function SoportePage() {
   const cookieStore = await cookies();
@@ -38,6 +40,13 @@ export default async function SoportePage() {
     redirect('/dashboard');
   }
 
+  // Obtener pagos en disputa para el DisputeResolver
+  const { data: pagosEnDisputa = [] } = await supabase
+    .from('pagos')
+    .select('*')
+    .eq('estado', 'DISPUTA')
+    .order('created_at', { ascending: false });
+
   return (
     <div className="flex min-h-screen flex-col bg-blue-500 text-gray-900 font-sans lg:h-screen lg:flex-row lg:overflow-hidden">
       <Sidebar
@@ -48,7 +57,9 @@ export default async function SoportePage() {
         isSupportAdmin={isSupportAdmin}
       />
       <main className="min-w-0 flex-1 overflow-y-auto">
-        <SupportConsole />
+        <SoporteTabs 
+          pagosEnDisputa={pagosEnDisputa as Pago[]}
+        />
       </main>
     </div>
   );
